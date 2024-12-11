@@ -42,6 +42,12 @@ pub enum SwitchToFrame {
     Element(String),
 }
 
+pub enum TimeoutType {
+    Script(u32),
+    PageLoad(u32),
+    Implicit(u32),
+}
+
 pub enum By<'a> {
     Css(&'a str),
     LinkText(&'a str),
@@ -174,6 +180,14 @@ impl Driver {
     pub fn get_title(&self) -> SResult<String> {
         self.http.get_title(&self.session.session_id)
     }
+
+    pub fn set_timeouts(&self,timeout:TimeoutType)->SResult<()>{
+        self.http.set_timeouts(&self.session.session_id, timeout)
+    }
+
+    pub fn get_timeouts(&self)->SResult<Vec<TimeoutType>>{
+        self.http.get_timouts(&self.session.session_id)
+    }
 }
 /// contenxts
 impl Driver {
@@ -255,5 +269,21 @@ impl Driver {
             identify: v.0,
             id: v.1,
         })
+    }
+}
+
+// document
+impl Driver {
+    pub fn get_page_source(&self) -> SResult<String> {
+        self.http.get_page_source(&self.session.session_id)
+    }
+    ///
+    /// 由于脚本执行返回的数据类型相当复杂，而且协议里并没有规定告知返回的数据类型，所以区分部分情况几乎不可能
+    /// 
+    /// 建议执行的脚本只返回基础数据类型
+    /// 
+    pub fn execute_script<T: serde::de::DeserializeOwned>(&self, script: &str, args: &[&str]) -> SResult<T> {
+        self.http
+            .execute_script::<T>(&self.session.session_id, script, args)
     }
 }

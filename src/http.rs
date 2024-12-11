@@ -5,7 +5,7 @@ use std::{collections::HashMap, fmt::Display, ops::Deref};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 
 use crate::{
-    driver::{By, Rect, Session, SwitchToFrame},
+    driver::{By, Rect, Session, SwitchToFrame, TimeoutType},
     element::Element,
     option::BrowserOption,
     SError, SResult,
@@ -740,6 +740,94 @@ impl Http {
             return Err(SError::message(v.as_str()?.to_string()));
         }
         Ok(())
+    }
+
+    pub(crate) fn get_page_source(&self, session_id: &str) -> SResult<String> {
+        let v = minreq::get(format!("{}/session/{}/source", self.url, session_id,))
+            .with_header("Content-Type", "application/json")
+            .send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        Ok(res.value)
+    }
+
+    pub(crate) fn execute_script<T: serde::de::DeserializeOwned>(
+        &self,
+        session_id: &str,
+        script: &str,
+        args: &[&str],
+    ) -> SResult<T> {
+        #[derive(Serialize)]
+        struct TempExecuteScript {
+            script: String,
+            args: Vec<String>,
+        }
+        let t = TempExecuteScript {
+            script: script.to_string(),
+            args: args.iter().map(|f| f.to_string()).collect(),
+        };
+
+        let v = minreq::post(format!("{}/session/{}/execute/sync", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .with_body(serde_json::to_string(&t)?)
+            .send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        let res: ResponseWrapper<T> = serde_json::from_str(v.as_str()?)?;
+        Ok(res.value)
+    }
+
+    pub(crate) fn set_timeouts(&self, session_id: &str, timeout: TimeoutType) -> SResult<()> {
+        let mut req = minreq::post(format!("{}/session/{}/timeouts", self.url, session_id))
+            .with_header("Content-Type", "application/json");
+        // req = match timeout {
+        //     TimeoutType::Script(t) => req.with_body(format!(r#"{{"type":"script","ms":{t}}}"#)),
+        //     TimeoutType::PageLoad(t) => req.with_body(format!(r#"{{"type":"pageLoad","ms":{t}}}"#)),
+        //     TimeoutType::Implicit(t) => req.with_body(format!(r#"{{"type":"implicit","ms":{t}}}"#)),
+        // };
+        req = match timeout {
+            TimeoutType::Script(t) => req.with_body(format!(r#"{{"script":{t}}}"#)),
+            TimeoutType::PageLoad(t) => req.with_body(format!(r#"{{"pageLoad":{t}}}"#)),
+            TimeoutType::Implicit(t) => req.with_body(format!(r#"{{"implicit":{t}}}"#)),
+        };
+        let v = req.send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn get_timouts(&self, session_id: &str) -> SResult<Vec<TimeoutType>> {
+        let req = minreq::get(format!("{}/session/{}/timeouts", self.url, session_id))
+            .with_header("Content-Type", "application/json");
+
+        let v = req.send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+
+        let res: ResponseWrapper<HashMap<String, u32>> = serde_json::from_str(v.as_str()?)?;
+
+        Ok(res
+            .value
+            .iter()
+            .map(|(key, value)| {
+                if key == "script" {
+                    TimeoutType::Script(*value)
+                } else if key == "pageLoad" {
+                    TimeoutType::PageLoad(*value)
+                } else {
+                    TimeoutType::Implicit(*value)
+                }
+            })
+            .collect())
     }
 }
 

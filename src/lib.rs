@@ -33,3 +33,4 @@ pub mod option;
 pub mod shadow;
 
 pub use driver::By;
+pub use driver::TimeoutType;
