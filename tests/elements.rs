@@ -82,3 +82,13 @@ fn clear() {
     assert_eq!("", ele.get_property("value").unwrap());
 }
 
+
+#[test]
+fn send_keys(){
+    let driver = common::new_driver();
+    let ele = driver.find_element(By::Css("#clear")).unwrap();
+    ele.clear().unwrap();
+    ele.send_keys("demo测试").unwrap();
+
+    assert_eq!("demo测试",ele.get_property("value").unwrap());
+}

@@ -31,6 +31,7 @@ pub mod element;
 pub(crate) mod http;
 pub mod option;
 pub mod shadow;
+mod actions;
 
 pub use driver::By;
 pub use driver::TimeoutType;

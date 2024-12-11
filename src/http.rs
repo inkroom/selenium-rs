@@ -2,9 +2,13 @@
 //! 负责实际的http通信
 use std::{collections::HashMap, fmt::Display, ops::Deref};
 
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{
+    ser::{SerializeSeq, SerializeStruct},
+    Deserialize, Serialize, Serializer,
+};
 
 use crate::{
+    actions::Device,
     driver::{By, Rect, Session, SwitchToFrame, TimeoutType},
     element::Element,
     option::BrowserOption,
@@ -36,6 +40,31 @@ pub(crate) struct Capability<T> {
     pub(crate) platform_name: Option<String>,
 
     pub(crate) always_match: Option<T>,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ActionRequest<'a> {
+    #[serde(serialize_with = "serialize_actions")]
+    pub(crate) actions: Vec<Device<'a>>,
+    pub(crate) parameters: HashMap<String, String>,
+    #[serde(alias = "type")]
+    pub(crate) _type: String,
+    pub(crate) id: String,
+}
+
+fn serialize_actions<S>(v: &Vec<Device>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    // serializer.collect_map(iter)
+    let mut s = serializer.serialize_seq(Some(v.len()))?;
+
+    for ele in v {
+        match ele {
+            Device::Pointer(pointer) => s.serialize_element(pointer)?,
+        }
+    }
+    s.end()
 }
 
 impl<T: BrowserOption> Display for Capability<T> {
@@ -742,6 +771,33 @@ impl Http {
         Ok(())
     }
 
+    pub(crate) fn element_send_keys(
+        &self,
+        session_id: &str,
+        element_id: &str,
+        keys: &str,
+    ) -> SResult<()> {
+
+        let v = minreq::post(format!(
+            "{}/session/{}/element/{}/value",
+            self.url, session_id, element_id,
+        ))
+        .with_header("Content-Type", "application/json")
+        .with_body( format!(
+            r#"{{"text":"{keys}","value":[{}]}}"#,
+            keys.chars()
+                .map(|f| format!(r#""{}""#, f))
+                .collect::<Vec<String>>()
+                .join(",")
+        ))
+        .send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        Ok(())
+    }
+
     pub(crate) fn get_page_source(&self, session_id: &str) -> SResult<String> {
         let v = minreq::get(format!("{}/session/{}/source", self.url, session_id,))
             .with_header("Content-Type", "application/json")
@@ -828,6 +884,27 @@ impl Http {
                 }
             })
             .collect())
+    }
+
+    pub(crate) fn perform_actions<'a>(
+        &self,
+        session_id: &str,
+        req: Vec<ActionRequest<'a>>,
+    ) -> SResult<()> {
+        let mut map = HashMap::new();
+        map.insert("actions", req);
+        let j = serde_json::to_string(&map)?;
+        println!("json={j}");
+        let v = minreq::post(format!("{}/session/{}/actions", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .with_body(j)
+            .send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        println!("actions {}", v.as_str()?);
+        Ok(())
     }
 }
 

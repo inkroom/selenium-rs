@@ -20,8 +20,14 @@
     <label for="checkbox2">选中<input type="checkbox" value="2" id="checkbox2" checked></label>
     <p id="p">测试文字</p>
     <button id="disabled" disabled>测试disable</button>
-    <button id="click" onclick="alert('clicked')" >测试click</button>
+    <button id="click" onclick="this.innerHTML='已点击'" >测试click</button>
     <input type="input" value="测试clear" id="clear"/>
+    <div id="demo">测试</div>
+    <script>
+        document.getElementById('demo').onclick=        function (e){
+            console.log(e);
+        }
+    </script>
 </body>
 
 </html>
