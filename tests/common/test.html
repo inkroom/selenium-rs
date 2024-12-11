@@ -23,9 +23,17 @@
     <button id="click" onclick="this.innerHTML='已点击'" >测试click</button>
     <input type="input" value="测试clear" id="clear"/>
     <div id="demo">测试</div>
+    <div id="demo2">测试</div>
     <script>
         document.getElementById('demo').onclick=        function (e){
             console.log(e);
+        }
+
+        document.onkeydown=function(event){
+            document.getElementById('demo').innerHTML='keydown='+event.key+' '+event.keyCode + (event.ctrlKey?" ctrl" :"");
+        }
+        document.onkeyup=function(event){
+            document.getElementById('demo2').innerHTML='keyup='+event.key+' '+event.keyCode;
         }
     </script>
 </body>

@@ -1,4 +1,4 @@
-use std::{thread::sleep, time::Duration};
+use std::time::Duration;
 
 use selenium::{driver::Driver, option::FirefoxBuilder, SError};
 
@@ -29,6 +29,9 @@ pub fn new_driver() -> Driver {
         .as_str(),
     )
     .unwrap();
-    sleep(Duration::from_secs(5));
     d
+}
+
+pub fn sleep(time: u64) {
+    std::thread::sleep(Duration::from_secs(time));
 }

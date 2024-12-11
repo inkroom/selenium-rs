@@ -25,6 +25,7 @@
 
 ## use
 
+### 启动
 使用本地driver
 
 ```rust
@@ -50,4 +51,27 @@ d.get("https://github.com").unwrap();
 let option = FirefoxBuilder::new().host("127.0.0.1").port(3824).build();
 let d = Driver::new(option).unwrap();
 d.get("https://github.com").unwrap();
+```
+
+### 查找元素
+```rust
+    driver.find_element(By::Css("#id"));
+```
+
+### 键盘操作
+
+普通的输入，比如input输入可以
+```rust
+driver.find_element(By::Css("#input")).unwrap().send_keys("input").unwrap()
+```
+
+更复杂的操作，比如组合键
+```rust
+driver.actions()
+      .key_down_special(Key::CONTROL)
+      .key_down("e")
+      .key_up("e")
+      .key_up_special(Key::CONTROL)
+      .perform()
+      .unwrap();
 ```

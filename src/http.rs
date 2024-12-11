@@ -8,7 +8,7 @@ use serde::{
 };
 
 use crate::{
-    actions::Device,
+    actions::{Device, Keyboard},
     driver::{By, Rect, Session, SwitchToFrame, TimeoutType},
     element::Element,
     option::BrowserOption,
@@ -62,6 +62,7 @@ where
     for ele in v {
         match ele {
             Device::Pointer(pointer) => s.serialize_element(pointer)?,
+            Device::Keyboard(keyboard)=>s.serialize_element(keyboard)?,
         }
     }
     s.end()
