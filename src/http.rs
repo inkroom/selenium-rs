@@ -1057,7 +1057,7 @@ mod base64 {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::driver::Rect;
+    use crate::{driver::Rect, option::MultipleTypeMapValue};
 
     use super::Capability;
 
@@ -1080,6 +1080,10 @@ mod tests {
                 arguments: vec!["1".to_string(), "2".to_string()],
                 exec: None,
                 env: HashMap::new(),
+                pref:HashMap::from([(
+                    "dom.ipc.processCount".to_string(),
+                    MultipleTypeMapValue::i32(4),
+                )])
             }),
         };
 

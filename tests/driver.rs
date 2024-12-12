@@ -115,6 +115,6 @@ fn prompt() {
 fn teke_screenshot() {
     let driver = common::new_driver();
     let v = driver.take_screenshot().unwrap();
-    // gui本身正常，截图出现了中文乱码，但是不确定和环境有没有关系，需要进一步测试
+    // 如果使用了隐私模式启动的话，会启动一个英文环境，导致截图出现中文乱码
     std::fs::write("screenshot.png", v).unwrap();
 }

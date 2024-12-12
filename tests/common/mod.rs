@@ -17,7 +17,7 @@ pub fn new_driver() -> Driver {
         .add_env("DISPLAY", ":1")
         .add_env("LC_ALL", "zh_CN.UTF-8")
         .add_env("LANG", "C.UTF-8")
-        .private()
+        // .private()
         .build();
 
     let d = Driver::new(option).unwrap();

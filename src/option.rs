@@ -5,6 +5,11 @@ use serde::{
     Serialize,
 };
 
+pub(crate) enum MultipleTypeMapValue {
+    i32(i32),
+    String(String),
+}
+
 pub trait BrowserOption: Display {
     ///
     ///
@@ -26,12 +31,13 @@ pub trait BrowserOption: Display {
 }
 
 pub struct FirefoxBuilder {
-    pub(crate) host: Option<String>,
-    pub(crate) port: Option<u32>,
-    pub(crate) driver: Option<String>,
-    pub(crate) arguments: Vec<String>,
-    pub(crate) exec: Option<String>,
-    pub(crate) env: HashMap<String, String>,
+    host: Option<String>,
+    port: Option<u32>,
+    driver: Option<String>,
+    arguments: Vec<String>,
+    exec: Option<String>,
+    env: HashMap<String, String>,
+    pref: HashMap<String, MultipleTypeMapValue>,
 }
 
 impl FirefoxBuilder {
@@ -68,6 +74,10 @@ impl FirefoxBuilder {
             arguments: Vec::new(),
             exec: None,
             env: HashMap::new(),
+            pref: HashMap::from([(
+                "dom.ipc.processCount".to_string(),
+                MultipleTypeMapValue::i32(3),
+            )]),
         }
     }
     ///
@@ -88,18 +98,32 @@ impl FirefoxBuilder {
         self
     }
 
-    pub fn build(&self) -> impl BrowserOption {
+    pub fn add_pref_i32(mut self, key: &str, value: i32) -> Self {
+        self.pref
+            .insert(key.to_string(), MultipleTypeMapValue::i32(value));
+        self
+    }
+
+    pub fn add_pref_string(mut self, key: &str, value: &str) -> Self {
+        self.pref.insert(
+            key.to_string(),
+            MultipleTypeMapValue::String(value.to_string()),
+        );
+        self
+    }
+
+    pub fn build(self) -> impl BrowserOption {
         FirefoxOption {
-            host: self.host.clone(),
-            port: self.port.clone(),
-            driver: self.driver.clone(),
-            arguments: self.arguments.clone(),
-            exec: self.exec.clone(),
-            env: self.env.clone(),
+            host: self.host,
+            port: self.port,
+            driver: self.driver,
+            arguments: self.arguments,
+            exec: self.exec,
+            env: self.env,
+            pref: self.pref,
         }
     }
 }
-
 pub(crate) struct FirefoxOption {
     pub(crate) host: Option<String>,
     pub(crate) port: Option<u32>,
@@ -107,6 +131,7 @@ pub(crate) struct FirefoxOption {
     pub(crate) arguments: Vec<String>,
     pub(crate) exec: Option<String>,
     pub(crate) env: HashMap<String, String>,
+    pub(crate) pref: HashMap<String, MultipleTypeMapValue>,
 }
 
 impl BrowserOption for FirefoxOption {
@@ -137,7 +162,13 @@ impl BrowserOption for FirefoxOption {
 
 impl Display for FirefoxOption {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(format!(r#"{{"browserName": "firefox","moz:firefoxOptions":{{"prefs": {{ "dom.ipc.processCount": 4 }},"args":[{}] }}}}"#
+        f.write_str(format!(r#"{{"browserName": "firefox","moz:firefoxOptions":{{"prefs": {{ {} }},"args":[{}] }}}}"#
+        ,self.pref.iter().map(|(key,value)|{
+            format!(r#""{key}": {}"#,match value {
+                MultipleTypeMapValue::i32(v) => v.to_string(),
+                MultipleTypeMapValue::String(v) => format!(r#""{v}""#),
+            })
+        }).collect::<Vec<String>>().join(",")
                 ,self.arguments.iter().map(|f|format!("\"{f}\"")).collect::<Vec<String>>().join(",")
             ).as_str()
         )
@@ -147,6 +178,8 @@ impl Display for FirefoxOption {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+
+    use crate::option::MultipleTypeMapValue;
 
     use super::FirefoxOption;
 
@@ -159,6 +192,10 @@ mod tests {
             arguments: vec!["1".to_string(), "2".to_string()],
             exec: None,
             env: HashMap::new(),
+            pref: HashMap::from([(
+                "dom.ipc.processCount".to_string(),
+                MultipleTypeMapValue::i32(4),
+            )]),
         };
         println!("{f}");
         assert_eq!(
