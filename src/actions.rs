@@ -98,9 +98,33 @@ impl Serialize for ActionType {
     }
 }
 
+pub enum Origin {
+    Viewport,
+    Pointer,
+    Element(String, String),
+}
+impl Serialize for Origin {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Origin::Viewport => serializer.serialize_str("viewport"),
+            Origin::Pointer => serializer.serialize_str("pointer"),
+            Origin::Element(identify, id) => {
+                let mut s = serializer.serialize_map(Some(2))?;
+                s.serialize_entry(identify.as_str(), id.as_str())?;
+                s.serialize_entry("ELEMENT", id.as_str())?;
+                s.end()
+            }
+        }
+    }
+}
+
 pub(crate) enum Device<'a> {
     Pointer(&'a Pointer),
     Keyboard(&'a Keyboard),
+    Wheel(&'a Wheel),
 }
 
 /// 鼠标、触摸等操作
@@ -109,11 +133,8 @@ pub(crate) enum Device<'a> {
 pub struct Pointer {
     #[serde(rename(serialize = "type"))]
     pub(crate) _type: ActionType,
-    #[serde(
-        serialize_with = "serialize_origin",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub(crate) origin: Option<(String, String)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) origin: Option<Origin>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) button: Option<Button>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -197,7 +218,10 @@ impl Pointer {
     pub fn move_pointer(element: &Element) -> Self {
         Pointer::builder()
             .r#type(ActionType::PointerMove)
-            .origin((element.identify.clone(), element.id.clone()))
+            .origin(Origin::Element(
+                element.identify.clone(),
+                element.id.clone(),
+            ))
             .x(0)
             .y(0)
             .duration(100)
@@ -255,6 +279,28 @@ impl Keyboard {
             duration: Some(duration),
         }
     }
+}
+
+///
+/// 鼠标滚轮
+///
+#[derive(Serialize, Builder)]
+#[serde(rename_all = "camelCase")]
+pub struct Wheel {
+    #[serde(rename(serialize = "type"))]
+    pub(crate) _type: ActionType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) x: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) y: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) duration: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) delta_x: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) delta_y: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) origin: Option<Origin>,
 }
 
 pub enum Key {
@@ -405,6 +451,7 @@ impl Key {
 pub struct Action {
     pub(crate) pointer: Vec<Pointer>,
     pub(crate) keyboard: Vec<Keyboard>,
+    pub(crate) wheel: Vec<Wheel>,
     session: Rc<Session>,
     http: Rc<Http>,
 }
@@ -413,6 +460,7 @@ impl Action {
         Action {
             pointer: Vec::new(),
             keyboard: Vec::new(),
+            wheel: Vec::new(),
             session,
             http,
         }
@@ -499,12 +547,36 @@ impl Action {
         self
     }
 
+    /// 鼠标滚轮
+    pub fn scroll(
+        mut self,
+        x: i32,
+        y: i32,
+        delta_x: i32,
+        delta_y: i32,
+        duration: u32,
+        origin: Origin,
+    ) -> Self {
+        self.wheel.push(
+            Wheel::builder()
+                .r#type(ActionType::Scroll)
+                .x(x)
+                .y(y)
+                .delta_x(delta_x)
+                .delta_y(delta_y)
+                .duration(duration)
+                .origin(origin)
+                .build(),
+        );
+        self
+    }
+
     pub fn perform(&self) -> SResult<()> {
         let mut req = Vec::new();
         if !self.pointer.is_empty() {
             req.push(ActionRequest {
                 actions: self.pointer.iter().map(|f| Device::Pointer(f)).collect(),
-                parameters: Pointer::parameters(),
+                parameters: Some(Pointer::parameters()),
                 _type: "pointer".to_string(),
                 id: "default mouse".to_string(),
             });
@@ -512,9 +584,17 @@ impl Action {
         if !self.keyboard.is_empty() {
             req.push(ActionRequest {
                 actions: self.keyboard.iter().map(|f| Device::Keyboard(f)).collect(),
-                parameters: Pointer::parameters(),
+                parameters: None,
                 _type: "key".to_string(),
                 id: "default keyboard".to_string(),
+            });
+        }
+        if !self.wheel.is_empty() {
+            req.push(ActionRequest {
+                actions: self.wheel.iter().map(|f| Device::Wheel(f)).collect(),
+                parameters: None,
+                _type: "wheel".to_string(),
+                id: "default wheel".to_string(),
             });
         }
         self.http.perform_actions(&self.session.session_id, req)

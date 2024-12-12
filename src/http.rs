@@ -46,7 +46,8 @@ pub(crate) struct Capability<T> {
 pub(crate) struct ActionRequest<'a> {
     #[serde(serialize_with = "serialize_actions")]
     pub(crate) actions: Vec<Device<'a>>,
-    pub(crate) parameters: HashMap<String, String>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub(crate) parameters: Option<HashMap<String, String>>,
     #[serde(alias = "type")]
     pub(crate) _type: String,
     pub(crate) id: String,
@@ -62,7 +63,8 @@ where
     for ele in v {
         match ele {
             Device::Pointer(pointer) => s.serialize_element(pointer)?,
-            Device::Keyboard(keyboard)=>s.serialize_element(keyboard)?,
+            Device::Keyboard(keyboard) => s.serialize_element(keyboard)?,
+            Device::Wheel(wheel) => s.serialize_element(wheel)?,
         }
     }
     s.end()
@@ -778,13 +780,12 @@ impl Http {
         element_id: &str,
         keys: &str,
     ) -> SResult<()> {
-
         let v = minreq::post(format!(
             "{}/session/{}/element/{}/value",
             self.url, session_id, element_id,
         ))
         .with_header("Content-Type", "application/json")
-        .with_body( format!(
+        .with_body(format!(
             r#"{{"text":"{keys}","value":[{}]}}"#,
             keys.chars()
                 .map(|f| format!(r#""{}""#, f))
@@ -895,7 +896,6 @@ impl Http {
         let mut map = HashMap::new();
         map.insert("actions", req);
         let j = serde_json::to_string(&map)?;
-        println!("json={j}");
         let v = minreq::post(format!("{}/session/{}/actions", self.url, session_id))
             .with_header("Content-Type", "application/json")
             .with_body(j)

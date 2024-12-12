@@ -126,3 +126,17 @@ fn key_special() {
             .unwrap()
     );
 }
+
+#[test]
+fn scroll(){
+    let driver = common::new_driver();
+
+    let h:i32 = driver.execute_script("return document.body.offsetHeight", &[]).unwrap();
+
+    driver
+        .actions()
+        .scroll(0,0,0,h,20,selenium::Origin::Viewport)
+        .perform()
+        .unwrap();
+
+}

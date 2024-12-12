@@ -8,6 +8,7 @@
         html,body{
             margin: 0;
             padding: 0;
+            height: 100%;
         }
     </style>
 </head>
@@ -24,7 +25,10 @@
     <input type="input" value="测试clear" id="clear"/>
     <div id="demo">测试</div>
     <div id="demo2">测试</div>
+    <div id="height">无用，只是用来撑开高度</div>
+    <div id="footer">footer</div>
     <script>
+        document.getElementById('height').style.height=document.body.offsetHeight+'px';
         document.getElementById('demo').onclick=        function (e){
             console.log(e);
         }
