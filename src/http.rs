@@ -46,7 +46,7 @@ pub(crate) struct Capability<T> {
 pub(crate) struct ActionRequest<'a> {
     #[serde(serialize_with = "serialize_actions")]
     pub(crate) actions: Vec<Device<'a>>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parameters: Option<HashMap<String, String>>,
     #[serde(alias = "type")]
     pub(crate) _type: String,
@@ -904,8 +904,80 @@ impl Http {
         if v.status_code != 200 {
             return Err(SError::message(v.as_str()?.to_string()));
         }
-        println!("actions {}", v.as_str()?);
         Ok(())
+    }
+
+    pub(crate) fn dismiss_alert(&self, session_id: &str) -> SResult<()> {
+        let v = minreq::post(format!("{}/session/{}/alert/dismiss", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .with_body("{}")
+            .send()?;
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn accept_alert(&self, session_id: &str) -> SResult<()> {
+        let v = minreq::post(format!("{}/session/{}/alert/accept", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .with_body("{}")
+            .send()?;
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn get_alert_text(&self, session_id: &str) -> SResult<String> {
+        let v = minreq::get(format!("{}/session/{}/alert/text", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .send()?;
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        Ok(res.value)
+    }
+
+    pub(crate) fn send_alert_text(&self, session_id: &str, text: &str) -> SResult<()> {
+        let v = minreq::post(format!("{}/session/{}/alert/text", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .with_body(format!(r#"{{"text":"{text}"}}"#))
+            .send()?;
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        Ok(())
+    }
+    pub(crate) fn take_screenshot(&self, session_id: &str) -> SResult<Vec<u8>> {
+        let v = minreq::get(format!("{}/session/{}/screenshot", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .with_body("{}")
+            .send()?;
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        Ok(base64::decode(res.value.as_bytes()))
+    }
+    pub(crate) fn take_element_screenshot(
+        &self,
+        session_id: &str,
+        element_id: &str,
+    ) -> SResult<Vec<u8>> {
+        let v = minreq::get(format!(
+            "{}/session/{}/element/{}/screenshot",
+            self.url, session_id, element_id
+        ))
+        .with_header("Content-Type", "application/json")
+        .with_body("{}")
+        .send()?;
+        if v.status_code != 200 {
+            return Err(SError::message(v.as_str()?.to_string()));
+        }
+        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        Ok(base64::decode(res.value.as_bytes()))
     }
 }
 
@@ -921,6 +993,66 @@ impl From<serde_json::Error> for SError {
     }
 }
 
+mod base64 {
+    use std::{collections::HashMap, sync::OnceLock};
+
+    const B64: [char; 65] = [
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
+        'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1',
+        '2', '3', '4', '5', '6', '7', '8', '9', '+', '/', '=',
+    ];
+
+    //base64查表
+    fn base64_map() -> &'static HashMap<u8, u8> {
+        static HASHMAP: OnceLock<HashMap<u8, u8>> = OnceLock::new();
+        HASHMAP.get_or_init(|| {
+            let mut m = HashMap::new();
+            for i in 0..65 {
+                m.insert(B64[i] as u8, i as u8);
+            }
+            m
+        })
+    }
+
+    pub(crate) fn decode(data: &[u8]) -> Vec<u8> {
+        let lens = data.len();
+        let mut data = data.to_vec();
+        for i in 0..lens {
+            data[i] = base64_map()[&data[i]];
+        }
+        let mut sub_count = 0;
+        let mut i = lens.saturating_sub(1); // 从末尾开始检查，确保不越界
+                                            // 逐个检查字节
+        while data[i] == 64 {
+            data[i] = 0; // 设置为0
+            sub_count += 1; // 计数加1
+            i -= 1; // 向前移动
+        }
+
+        //向量的分配可以一开始就确定容量
+        let capacity = lens * 3 / 4;
+        let mut result = Vec::with_capacity(capacity);
+        let lens = lens / 4;
+
+        //按位操作，还原字节
+        for index in 0..lens {
+            let a1 = data[index * 4 + 0] << 2 | data[index * 4 + 1] >> 4;
+            let a2 = data[index * 4 + 1] << 4 | data[index * 4 + 2] >> 2;
+            let a3 = data[index * 4 + 2] << 6 | data[index * 4 + 3];
+            result.push(a1 as u8);
+            result.push(a2 as u8);
+            result.push(a3 as u8);
+        }
+
+        //去掉填充的字符
+        for _i in 0..sub_count {
+            result.pop();
+        }
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -933,9 +1065,9 @@ mod tests {
     fn test_capability() {
         let r = Rect {
             x: None,
-            y: Some(32),
+            y: Some(32.0),
             width: None,
-            height: Some(39),
+            height: Some(39.0),
         };
         println!("{}", serde_json::to_string(&r).unwrap());
         let c = Capability {

@@ -5,39 +5,67 @@
     <meta charset="UTF-8" />
     <title>测试</title>
     <style>
-        html,body{
+        html,
+        body {
             margin: 0;
             padding: 0;
             height: 100%;
         }
     </style>
 </head>
+
 <body>
     <div style="position: relative;height: 40px;margin-bottom: 50px;">
-        <div id="rect" style="display: inline-block; position: absolute;top: 10px;left: 29px;height: 38px;width: 48px;color: black;">测试rect</div>
+        <div id="rect"
+            style="display: inline-block; position: absolute;top: 10px;left: 29px;height: 38px;width: 48px;color: black;">
+            测试rect</div>
 
     </div>
-    <label for="checkbox" id="label" style="color: red;margin-top: 100px;">未选中<input type="checkbox" value="1" id="checkbox"></label>
+    <label for="checkbox" id="label" style="color: red;margin-top: 100px;">未选中<input type="checkbox" value="1"
+            id="checkbox"></label>
     <label for="checkbox2">选中<input type="checkbox" value="2" id="checkbox2" checked></label>
     <p id="p">测试文字</p>
     <button id="disabled" disabled>测试disable</button>
-    <button id="click" onclick="this.innerHTML='已点击'" >测试click</button>
-    <input type="input" value="测试clear" id="clear"/>
+    <button id="click" onclick="this.innerHTML='已点击'">测试click</button>
+    <input type="input" value="测试clear" id="clear" />
     <div id="demo">测试</div>
     <div id="demo2">测试</div>
     <div id="height">无用，只是用来撑开高度</div>
     <div id="footer">footer</div>
+    <div id="alert">alert</div>
+    <div id="confirm">confirm</div>
+    <div id="prompt">prompt</div>
     <script>
-        document.getElementById('height').style.height=document.body.offsetHeight+'px';
-        document.getElementById('demo').onclick=        function (e){
+        document.getElementById('height').style.height = document.body.offsetHeight + 'px';
+        document.getElementById('demo').onclick = function (e) {
             console.log(e);
         }
 
-        document.onkeydown=function(event){
-            document.getElementById('demo').innerHTML='keydown='+event.key+' '+event.keyCode + (event.ctrlKey?" ctrl" :"");
+        document.onkeydown = function (event) {
+            document.getElementById('demo').innerHTML = 'keydown=' + event.key + ' ' + event.keyCode + (event.ctrlKey ? " ctrl" : "");
         }
-        document.onkeyup=function(event){
-            document.getElementById('demo2').innerHTML='keyup='+event.key+' '+event.keyCode;
+        document.onkeyup = function (event) {
+            document.getElementById('demo2').innerHTML = 'keyup=' + event.key + ' ' + event.keyCode;
+        }
+        document.getElementById('alert').onclick = function () {
+            alert(1);
+            document.getElementById('alert').innerHTML = 'after alert';
+        }
+        document.getElementById('confirm').onclick = function () {
+            if (confirm('ok')) {
+                document.getElementById('confirm').innerHTML = 'yes confirm';
+            } else {
+                document.getElementById('confirm').innerHTML = 'no confirm';
+            }
+        }
+        document.getElementById('prompt').onclick = function () {
+            let v = prompt('ss');
+            if (v) {
+                document.getElementById('prompt').innerHTML = v;
+            }else{
+                document.getElementById('prompt').innerHTML = "null";
+
+            }
         }
     </script>
 </body>

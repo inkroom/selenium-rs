@@ -108,8 +108,8 @@ fn key_special() {
         .key_up_special(Key::CONTROL)
         .perform()
         .unwrap();
-    sleep(20);
-    assert_eq!(
+
+        assert_eq!(
         "keydown=e 69 ctrl",
         driver
             .find_element(By::Css("#demo"))

@@ -291,6 +291,30 @@ impl Driver {
         self.http
             .execute_script::<T>(&self.session.session_id, script, args)
     }
+
+    pub fn dismiss_alert(&self) -> SResult<()> {
+        self.http.dismiss_alert(&self.session.session_id)
+    }
+
+    pub fn accept_alert(&self) -> SResult<()> {
+        self.http.accept_alert(&self.session.session_id)
+    }
+
+    pub fn get_alert_text(&self) -> SResult<String> {
+        self.http.get_alert_text(&self.session.session_id)
+    }
+    ///
+    /// 设置prompt 输入的文本
+    ///
+    /// 注意，设置文本后需要调用 `accept_alert` 点击确认按钮，否则alert依然存在
+    ///
+    pub fn send_alert_text(&self, text: &str) -> SResult<()> {
+        self.http.send_alert_text(&self.session.session_id, text)
+    }
+
+    pub fn take_screenshot(&self) -> SResult<Vec<u8>> {
+        self.http.take_screenshot(&self.session.session_id)
+    }
 }
 
 impl Driver {

@@ -1,5 +1,5 @@
-use std::{collections::HashMap, thread::sleep, time::Duration};
-
+use common::sleep;
+use std::{collections::HashMap, time::Duration};
 mod common;
 #[test]
 fn get_page_source() {
@@ -61,4 +61,60 @@ fn timeout() {
             selenium::TimeoutType::Implicit(v) => assert_eq!(2209, v),
         }
     }
+}
+#[test]
+fn dismiss_alert() {
+    let driver = common::new_driver();
+    let ele = driver.find_element(selenium::By::Css("#alert")).unwrap();
+    ele.click().unwrap();
+
+    driver.dismiss_alert().unwrap();
+
+    assert_eq!("after alert", ele.get_property("innerHTML").unwrap());
+}
+
+#[test]
+fn confirm() {
+    let driver = common::new_driver();
+    let ele = driver.find_element(selenium::By::Css("#confirm")).unwrap();
+    ele.click().unwrap();
+
+    driver.accept_alert().unwrap();
+
+    assert_eq!("yes confirm", ele.get_property("innerHTML").unwrap());
+
+    ele.click().unwrap();
+
+    driver.dismiss_alert().unwrap();
+
+    assert_eq!("no confirm", ele.get_property("innerHTML").unwrap());
+}
+
+#[test]
+fn alert_text() {
+    let driver = common::new_driver();
+    let ele = driver.find_element(selenium::By::Css("#alert")).unwrap();
+    ele.click().unwrap();
+
+    assert_eq!("1", driver.get_alert_text().unwrap());
+}
+
+#[test]
+fn prompt() {
+    let driver = common::new_driver();
+    let ele = driver.find_element(selenium::By::Css("#prompt")).unwrap();
+    ele.click().unwrap();
+
+    driver.send_alert_text("text").unwrap();
+    driver.accept_alert().unwrap();
+
+    assert_eq!("text", ele.get_property("innerHTML").unwrap());
+}
+
+#[test]
+fn teke_screenshot() {
+    let driver = common::new_driver();
+    let v = driver.take_screenshot().unwrap();
+    // gui本身正常，截图出现了中文乱码，但是不确定和环境有没有关系，需要进一步测试
+    std::fs::write("screenshot.png", v).unwrap();
 }
