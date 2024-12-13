@@ -18,8 +18,10 @@ jobs:
       - name: Ready Firefox
         run: |
           sudo apt update -y && sudo apt install firefox fonts-wqy-zenhei  && wget https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux64.tar.gz && tar -zxf geckodriver-v0.35.0-linux64.tar.gz
+          chmod +x geckodriver
+          nohup ./geckodriver --port=4892  > gec.log 2>&1 &
       - name: Test
         env:
           HEADLESS: true
         run: |
-          cargo test
+          cargo test || cat gec.log

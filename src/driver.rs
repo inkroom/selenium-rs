@@ -82,6 +82,8 @@ impl Drop for Driver {
         let _ = self.quit();
         if let Some(p) = &mut self.process {
             let _ = p.kill();
+            // 避免僵尸进程
+            let _ = p.wait();
         }
     }
 }
@@ -136,7 +138,7 @@ impl Driver {
             });
         } else if let Some(driver) = option.driver() {
             // 启用driver进程
-            let (s, port) = start_driver(driver, option.env())?;
+            let (mut s, port) = start_driver(driver, option.env())?;
             let http = Http::new(format!("http://127.0.0.1:{port}").as_str());
             // 开启session
             let cap = Capability {
@@ -144,12 +146,21 @@ impl Driver {
                 platform_name: None,
                 always_match: Some(option),
             };
-            let session = http.new_session(cap)?;
-            return Ok(Driver {
-                session: Rc::new(session),
-                http: Rc::new(http),
-                process: Some(s),
-            });
+
+            match http.new_session(cap) {
+                Ok(session) => {
+                    return Ok(Driver {
+                        session: Rc::new(session),
+                        http: Rc::new(http),
+                        process: Some(s),
+                    });
+                }
+                Err(e) => {
+                    let _ = s.kill();
+                    let _ = s.wait();
+                    return Err(e);
+                }
+            }
         }
         unimplemented!()
     }
