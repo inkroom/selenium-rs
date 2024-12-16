@@ -6,7 +6,7 @@ on:
       - master
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -14,10 +14,10 @@ jobs:
          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: 1.83.0
       - name: Ready Firefox
         run: |
-          sudo apt update -y && sudo apt install firefox fonts-wqy-zenhei  && wget https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux64.tar.gz && tar -zxf geckodriver-v0.35.0-linux64.tar.gz
+          sudo apt update -y && sudo apt install firefox firefox-locale-zh-hans fonts-wqy-zenhei  && wget https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux64.tar.gz && tar -zxf geckodriver-v0.35.0-linux64.tar.gz
           chmod +x geckodriver
           nohup ./geckodriver --port=4892  > gec.log 2>&1 &
       - name: Test
