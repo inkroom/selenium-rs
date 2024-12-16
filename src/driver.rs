@@ -25,10 +25,93 @@ pub(crate) struct Session {
     pub(crate) session_id: String,
 }
 
+struct DriverProcess {
+    driver: Child,
+    monitor: Child,
+}
+
+impl Drop for DriverProcess {
+    fn drop(&mut self) {
+        let _ = self.monitor.kill();
+        let _ = self.driver.kill();
+        // 避免产生僵尸进程
+        let _ = self.monitor.wait();
+        let _ = self.driver.wait();
+    }
+}
+
+impl DriverProcess {
+    fn get_available_port() -> u16 {
+        std::net::TcpListener::bind("0.0.0.0:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    }
+
+    fn start_driver(exec: &str, env: &HashMap<String, String>) -> SResult<(Child, u16)> {
+        let port = Self::get_available_port();
+        let mut s = Command::new(exec)
+            .arg("--port")
+            .arg(port.to_string())
+            // .env("DISPLAY", "1")
+            .envs(env)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()?;
+
+        let mut m = BufReader::new(s.stdout.as_mut().unwrap());
+        let mut line = String::new();
+        // 暂时找不到设置超时的方法，可能会卡在这一步
+        m.read_line(&mut line)?;
+        Ok((s, port))
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    fn start_monitor(driver_pid: u32) -> SResult<Child> {
+        let v = Command::new("/bin/sh")
+            .arg("-c")
+            .arg(format!(
+                "while kill -0 {} 2>/dev/null; do sleep 0.5; done; kill {}", // do sleep 后跟着的就是定期检查的间隔时间
+                std::process::id(),
+                driver_pid
+            ))
+            .spawn()
+            .map_err(|e| SError::message(e.to_string()))?;
+        Ok(v)
+    }
+
+    #[cfg(target_os = "window")]
+    fn start_monitor(driver_pid: u32) -> SResult<Child> {
+        let v = Command::new("powershell.exe")
+            .arg("-Command")
+            .arg(format!(
+                "while ((Get-Process -Id {} -ErrorAction SilentlyContinue) -ne $null) \
+            {{ Start-Sleep -Milliseconds 500 }}; Stop-Process -Id {} -Force",
+                std::process::id(),
+                driver_pid
+            ))
+            .spawn()
+            .map_err(|e| SError::message(e.to_string()))?;
+        Ok(v)
+    }
+    pub(crate) fn new(driver: &str, env: &HashMap<String, String>) -> SResult<(Self, u16)> {
+        let c = Self::start_driver(driver, env)?;
+        let m = Self::start_monitor(c.0.id())?;
+        Ok((
+            Self {
+                driver: c.0,
+                monitor: m,
+            },
+            c.1,
+        ))
+    }
+}
+
 pub struct Driver {
     pub(crate) session: Rc<Session>,
     pub(crate) http: Rc<Http>,
-    pub(crate) process: Option<Child>,
+    pub(crate) process: Option<DriverProcess>,
     // pub(crate) quited: bool,
 }
 
@@ -77,42 +160,6 @@ impl Display for NewWindowType {
         }
     }
 }
-impl Drop for Driver {
-    fn drop(&mut self) {
-        let _ = self.quit();
-        if let Some(p) = &mut self.process {
-            let _ = p.kill();
-            // 避免僵尸进程
-            let _ = p.wait();
-        }
-    }
-}
-fn get_available_port() -> u16 {
-    std::net::TcpListener::bind("0.0.0.0:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
-}
-
-fn start_driver(exec: &str, env: &HashMap<String, String>) -> SResult<(Child, u16)> {
-    let port = get_available_port();
-    let mut s = Command::new(exec)
-        .arg("--port")
-        .arg(port.to_string())
-        // .env("DISPLAY", "1")
-        .envs(env)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()?;
-
-    let mut m = BufReader::new(s.stdout.as_mut().unwrap());
-    let mut line = String::new();
-    // 暂时找不到设置超时的方法，可能会卡在这一步
-    m.read_line(&mut line)?;
-    Ok((s, port))
-}
-
 impl Driver {
     pub fn new(option: impl BrowserOption) -> SResult<Self> {
         // 连接远程
@@ -138,7 +185,7 @@ impl Driver {
             });
         } else if let Some(driver) = option.driver() {
             // 启用driver进程
-            let (mut s, port) = start_driver(driver, option.env())?;
+            let (s, port) = DriverProcess::new(driver, option.env())?;
             let http = Http::new(format!("http://127.0.0.1:{port}").as_str());
             // 开启session
             let cap = Capability {
@@ -156,8 +203,7 @@ impl Driver {
                     });
                 }
                 Err(e) => {
-                    let _ = s.kill();
-                    let _ = s.wait();
+                    drop(s);
                     return Err(e);
                 }
             }
