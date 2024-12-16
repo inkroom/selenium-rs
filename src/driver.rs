@@ -114,6 +114,12 @@ pub struct Driver {
     pub(crate) process: Option<DriverProcess>,
     // pub(crate) quited: bool,
 }
+#[cfg(debug_assertions)]
+impl Drop for Driver {
+    fn drop(&mut self) {
+        let _ = self.quit();
+    }
+}
 
 pub enum NewWindowType {
     tab,
