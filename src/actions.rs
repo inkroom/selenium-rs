@@ -1,45 +1,14 @@
 use std::{collections::HashMap, rc::Rc};
 
-use bon::{bon, builder, Builder};
-use serde::{
-    ser::{SerializeMap, SerializeSeq, SerializeStruct},
-    Serialize, Serializer,
-};
+use bon::Builder;
+use serde::{ser::SerializeMap, Serialize, Serializer};
 
 use crate::{
     driver::Session,
-    element::{self, Element},
+    element::Element,
     http::{ActionRequest, Http},
     SResult,
 };
-// struct ActionOrigin {
-//     pub(crate) identify: String,
-//     pub(crate) id: String,
-// }
-
-// impl Serialize for ActionOrigin {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//     {
-//         let mut s = serializer.serialize_map(Some(2))?;
-
-//         s.serialize_entry(self.identify.as_str(), self.id.as_str())?;
-//         s.serialize_entry("ELEMENT", self.id.as_str())?;
-//         s.end()
-//     }
-// }
-
-fn serialize_origin<S>(v: &Option<(String, String)>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let mut s = serializer.serialize_map(Some(2))?;
-    let v = v.as_ref().unwrap();
-    s.serialize_entry(v.0.as_str(), v.1.as_str())?;
-    s.serialize_entry("ELEMENT", v.1.as_str())?;
-    s.end()
-}
 
 pub enum Button {
     LEFT = 0,
@@ -304,53 +273,53 @@ pub struct Wheel {
 }
 
 pub enum Key {
-    NULL,
-    CANCEL, // ^break
-    HELP,
-    BACK_SPACE,
-    TAB,
-    CLEAR,
-    RETURN,
-    ENTER,
-    SHIFT,
-    CONTROL,
-    ALT,
-    PAUSE,
-    ESCAPE,
-    SPACE,
-    PAGE_UP,
-    PAGE_DOWN,
-    END,
-    HOME,
-    ARROW_LEFT,
-    LEFT,
-    ARROW_UP,
-    UP,
-    ARROW_RIGHT,
-    RIGHT,
-    ARROW_DOWN,
-    DOWN,
-    INSERT,
-    DELETE,
-    SEMICOLON,
-    EQUALS,
+    Null,
+    Cancel, // ^break
+    Help,
+    BackSpace,
+    Tab,
+    Clear,
+    Return,
+    Enter,
+    Shift,
+    Control,
+    Alt,
+    Pause,
+    Escape,
+    Space,
+    PageUp,
+    PageDown,
+    End,
+    Home,
+    ArrowLeft,
+    Left,
+    ArrowUp,
+    Up,
+    ArrowRight,
+    Right,
+    ArrowDown,
+    Down,
+    Insert,
+    Delete,
+    Semicolon,
+    Equals,
 
-    NUMPAD0, // number pad keys
-    NUMPAD1,
-    NUMPAD2,
-    NUMPAD3,
-    NUMPAD4,
-    NUMPAD5,
-    NUMPAD6,
-    NUMPAD7,
-    NUMPAD8,
-    NUMPAD9,
-    MULTIPLY,
-    ADD,
-    SEPARATOR,
-    SUBTRACT,
-    DECIMAL,
-    DIVIDE,
+    NumPad0, // number pad keys
+    NumPad1,
+    NumPad2,
+    NumPad3,
+    NumPad4,
+    NumPad5,
+    NumPad6,
+    NumPad7,
+    NumPad8,
+    NumPad9,
+    Multiply,
+    Add,
+    Separator,
+    Subtract,
+    Decimal,
+    Divide,
 
     F1, // function keys
     F2,
@@ -365,67 +334,67 @@ pub enum Key {
     F11,
     F12,
 
-    COMMAND, // Apple command key
-    META,    // alias for Windows key
+    Command, // Apple command key
+    Meta,    // alias for Windows key
 
     /**
      * Japanese modifier key for switching between full- and half-width
      * characters.
      * @see <https://en.wikipedia.org/wiki/Language_input_keys>
      */
-    ZENKAKU_HANKAKU,
+    ZenkakuHankaku,
 }
 
 impl Key {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Key::NULL => "\u{E000}",
-            Key::CANCEL => "\u{E001}", // ^break
-            Key::HELP => "\u{E002}",
-            Key::BACK_SPACE => "\u{E003}",
-            Key::TAB => "\u{E004}",
-            Key::CLEAR => "\u{E005}",
-            Key::RETURN => "\u{E006}",
-            Key::ENTER => "\u{E007}",
-            Key::SHIFT => "\u{E008}",
-            Key::CONTROL => "\u{E009}",
-            Key::ALT => "\u{E00A}",
-            Key::PAUSE => "\u{E00B}",
-            Key::ESCAPE => "\u{E00C}",
-            Key::SPACE => "\u{E00D}",
-            Key::PAGE_UP => "\u{E00E}",
-            Key::PAGE_DOWN => "\u{E00F}",
-            Key::END => "\u{E010}",
-            Key::HOME => "\u{E011}",
-            Key::ARROW_LEFT => "\u{E012}",
-            Key::LEFT => "\u{E012}",
-            Key::ARROW_UP => "\u{E013}",
-            Key::UP => "\u{E013}",
-            Key::ARROW_RIGHT => "\u{E014}",
-            Key::RIGHT => "\u{E014}",
-            Key::ARROW_DOWN => "\u{E015}",
-            Key::DOWN => "\u{E015}",
-            Key::INSERT => "\u{E016}",
-            Key::DELETE => "\u{E017}",
-            Key::SEMICOLON => "\u{E018}",
-            Key::EQUALS => "\u{E019}",
+            Key::Null => "\u{E000}",
+            Key::Cancel => "\u{E001}", // ^break
+            Key::Help => "\u{E002}",
+            Key::BackSpace => "\u{E003}",
+            Key::Tab => "\u{E004}",
+            Key::Clear => "\u{E005}",
+            Key::Return => "\u{E006}",
+            Key::Enter => "\u{E007}",
+            Key::Shift => "\u{E008}",
+            Key::Control => "\u{E009}",
+            Key::Alt => "\u{E00A}",
+            Key::Pause => "\u{E00B}",
+            Key::Escape => "\u{E00C}",
+            Key::Space => "\u{E00D}",
+            Key::PageUp => "\u{E00E}",
+            Key::PageDown => "\u{E00F}",
+            Key::End => "\u{E010}",
+            Key::Home => "\u{E011}",
+            Key::ArrowLeft => "\u{E012}",
+            Key::Left => "\u{E012}",
+            Key::ArrowUp => "\u{E013}",
+            Key::Up => "\u{E013}",
+            Key::ArrowRight => "\u{E014}",
+            Key::Right => "\u{E014}",
+            Key::ArrowDown => "\u{E015}",
+            Key::Down => "\u{E015}",
+            Key::Insert => "\u{E016}",
+            Key::Delete => "\u{E017}",
+            Key::Semicolon => "\u{E018}",
+            Key::Equals => "\u{E019}",
 
-            Key::NUMPAD0 => "\u{E01A}", // number pad keys
-            Key::NUMPAD1 => "\u{E01B}",
-            Key::NUMPAD2 => "\u{E01C}",
-            Key::NUMPAD3 => "\u{E01D}",
-            Key::NUMPAD4 => "\u{E01E}",
-            Key::NUMPAD5 => "\u{E01F}",
-            Key::NUMPAD6 => "\u{E020}",
-            Key::NUMPAD7 => "\u{E021}",
-            Key::NUMPAD8 => "\u{E022}",
-            Key::NUMPAD9 => "\u{E023}",
-            Key::MULTIPLY => "\u{E024}",
-            Key::ADD => "\u{E025}",
-            Key::SEPARATOR => "\u{E026}",
-            Key::SUBTRACT => "\u{E027}",
-            Key::DECIMAL => "\u{E028}",
-            Key::DIVIDE => "\u{E029}",
+            Key::NumPad0 => "\u{E01A}", // number pad keys
+            Key::NumPad1 => "\u{E01B}",
+            Key::NumPad2 => "\u{E01C}",
+            Key::NumPad3 => "\u{E01D}",
+            Key::NumPad4 => "\u{E01E}",
+            Key::NumPad5 => "\u{E01F}",
+            Key::NumPad6 => "\u{E020}",
+            Key::NumPad7 => "\u{E021}",
+            Key::NumPad8 => "\u{E022}",
+            Key::NumPad9 => "\u{E023}",
+            Key::Multiply => "\u{E024}",
+            Key::Add => "\u{E025}",
+            Key::Separator => "\u{E026}",
+            Key::Subtract => "\u{E027}",
+            Key::Decimal => "\u{E028}",
+            Key::Divide => "\u{E029}",
 
             Key::F1 => "\u{E031}", // function keys
             Key::F2 => "\u{E032}",
@@ -440,10 +409,10 @@ impl Key {
             Key::F11 => "\u{E03B}",
             Key::F12 => "\u{E03C}",
 
-            Key::COMMAND => "\u{E03D}", // Apple command key
-            Key::META => "\u{E03D}",    // alias for Windows key
+            Key::Command => "\u{E03D}", // Apple command key
+            Key::Meta => "\u{E03D}",    // alias for Windows key
 
-            Key::ZENKAKU_HANKAKU => "\u{E040}",
+            Key::ZenkakuHankaku => "\u{E040}",
         }
     }
 }
@@ -575,7 +544,7 @@ impl Action {
         let mut req = Vec::new();
         if !self.pointer.is_empty() {
             req.push(ActionRequest {
-                actions: self.pointer.iter().map(|f| Device::Pointer(f)).collect(),
+                actions: self.pointer.iter().map(Device::Pointer).collect(),
                 parameters: Some(Pointer::parameters()),
                 _type: "pointer".to_string(),
                 id: "default mouse".to_string(),
@@ -583,7 +552,7 @@ impl Action {
         }
         if !self.keyboard.is_empty() {
             req.push(ActionRequest {
-                actions: self.keyboard.iter().map(|f| Device::Keyboard(f)).collect(),
+                actions: self.keyboard.iter().map(Device::Keyboard).collect(),
                 parameters: None,
                 _type: "key".to_string(),
                 id: "default keyboard".to_string(),
@@ -591,7 +560,7 @@ impl Action {
         }
         if !self.wheel.is_empty() {
             req.push(ActionRequest {
-                actions: self.wheel.iter().map(|f| Device::Wheel(f)).collect(),
+                actions: self.wheel.iter().map(Device::Wheel).collect(),
                 parameters: None,
                 _type: "wheel".to_string(),
                 id: "default wheel".to_string(),

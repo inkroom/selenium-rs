@@ -1,5 +1,3 @@
-use std::{thread::sleep, time::Duration};
-
 use selenium::By;
 
 mod common;
@@ -60,7 +58,7 @@ fn is_enabled() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#disabled")).unwrap();
 
-    assert_eq!(false, ele.is_enabled().unwrap());
+    assert!(!ele.is_enabled().unwrap());
 }
 
 #[test]

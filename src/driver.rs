@@ -1,12 +1,9 @@
 use std::{
     collections::HashMap,
-    env,
-    fmt::{Display, Write},
-    io::{BufRead, BufReader, Read},
+    fmt::Display,
+    io::{BufRead, BufReader},
     process::{Child, Command, Stdio},
     rc::Rc,
-    thread::sleep,
-    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
@@ -14,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     actions::Action,
     element::Element,
-    http::{self, Capability, Http},
+    http::{Capability, Http},
     option::BrowserOption,
     SError, SResult,
 };
@@ -77,11 +74,11 @@ impl DriverProcess {
                 driver_pid
             ))
             .spawn()
-            .map_err(|e| SError::message(e.to_string()))?;
+            .map_err(|e| SError::Message(e.to_string()))?;
         Ok(v)
     }
 
-    #[cfg(target_os = "window")]
+    #[cfg(target_os = "windows")]
     fn start_monitor(driver_pid: u32) -> SResult<Child> {
         let v = Command::new("powershell.exe")
             .arg("-Command")
@@ -92,7 +89,7 @@ impl DriverProcess {
                 driver_pid
             ))
             .spawn()
-            .map_err(|e| SError::message(e.to_string()))?;
+            .map_err(|e| SError::Message(e.to_string()))?;
         Ok(v)
     }
     pub(crate) fn new(driver: &str, env: &HashMap<String, String>) -> SResult<(Self, u16)> {
@@ -111,7 +108,7 @@ impl DriverProcess {
 pub struct Driver {
     pub(crate) session: Rc<Session>,
     pub(crate) http: Rc<Http>,
-    pub(crate) process: Option<DriverProcess>,
+    process: Option<DriverProcess>,
     // pub(crate) quited: bool,
 }
 #[cfg(debug_assertions)]
@@ -122,8 +119,8 @@ impl Drop for Driver {
 }
 
 pub enum NewWindowType {
-    tab,
-    window,
+    Tab,
+    Window,
 }
 
 pub enum SwitchToFrame {
@@ -161,8 +158,8 @@ pub struct Rect {
 impl Display for NewWindowType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::tab => f.write_str("tab"),
-            Self::window => f.write_str("window"),
+            Self::Tab => f.write_str("tab"),
+            Self::Window => f.write_str("window"),
         }
     }
 }
@@ -259,6 +256,10 @@ impl Driver {
         self.http.get_window_handle(&self.session.session_id)
     }
 
+    pub fn get_window_handles(&self) -> SResult<Vec<String>> {
+        self.http.get_window_handles(&self.session.session_id)
+    }
+
     pub fn close_window(&self) -> SResult<Vec<String>> {
         self.http.close_window(&self.session.session_id)
     }
@@ -303,7 +304,7 @@ impl Driver {
 
 /// element
 impl Driver {
-    pub fn find_element<'a>(&self, by: By<'a>) -> SResult<Element> {
+    pub fn find_element(&self, by: By<'_>) -> SResult<Element> {
         let v = self.http.find_element(&self.session.session_id, by)?;
         Ok(Element {
             http: Rc::clone(&self.http),
@@ -313,7 +314,7 @@ impl Driver {
         })
     }
 
-    pub fn find_elements<'a>(&self, by: By<'a>) -> SResult<Vec<Element>> {
+    pub fn find_elements(&self, by: By<'_>) -> SResult<Vec<Element>> {
         let v = self.http.find_elements(&self.session.session_id, by)?;
         Ok(v.iter()
             .map(|f| Element {

@@ -9,7 +9,7 @@ pub fn new_driver() -> Driver {
                 format!(
                     "{}/geckodriver",
                     std::env::current_dir()
-                        .map_err(|f| SError::message(f.to_string()))
+                        .map_err(|f| SError::Message(f.to_string()))
                         .unwrap()
                         .display()
                 )
@@ -21,7 +21,7 @@ pub fn new_driver() -> Driver {
             format!(
                 "{}/geckodriver",
                 std::env::current_dir()
-                    .map_err(|f| SError::message(f.to_string()))
+                    .map_err(|f| SError::Message(f.to_string()))
                     .unwrap()
                     .display()
             )
@@ -34,7 +34,7 @@ pub fn new_driver() -> Driver {
         format!(
             "file://{}/tests/common/test.html",
             std::env::current_dir()
-                .map_err(|f| SError::message(f.to_string()))
+                .map_err(|f| SError::Message(f.to_string()))
                 .unwrap()
                 .display()
         )

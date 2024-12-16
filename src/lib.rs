@@ -1,12 +1,18 @@
+#![cfg_attr(debug_assertions, allow(dead_code, unused_imports, unused_variables, unused_mut))]
 use std::fmt::{Debug, Display};
 
+// extern crate selenium_manager;
+extern {
+
+}
+
 pub enum SError {
-    message(String),
+    Message(String),
 }
 impl Display for SError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::message(m) => f.write_str(m.as_str()),
+            Self::Message(m) => f.write_str(m.as_str()),
             // _ => {f.write_str("unkonwn")}
         }
     }
@@ -14,14 +20,14 @@ impl Display for SError {
 impl Debug for SError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::message(arg0) => f.debug_tuple("message").field(arg0).finish(),
+            Self::Message(arg0) => f.debug_tuple("message").field(arg0).finish(),
         }
     }
 }
 
 impl From<std::io::Error> for SError {
     fn from(value: std::io::Error) -> Self {
-        Self::message(value.to_string())
+        Self::Message(value.to_string())
     }
 }
 

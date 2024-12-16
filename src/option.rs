@@ -1,12 +1,8 @@
 use std::{collections::HashMap, fmt::Display};
 
-use serde::{
-    ser::{Error, SerializeMap, SerializeSeq, SerializeStruct},
-    Serialize,
-};
 
 pub(crate) enum MultipleTypeMapValue {
-    i32(i32),
+    Number(i32),
     String(String),
 }
 
@@ -38,6 +34,12 @@ pub struct FirefoxBuilder {
     exec: Option<String>,
     env: HashMap<String, String>,
     pref: HashMap<String, MultipleTypeMapValue>,
+}
+
+impl Default for FirefoxBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FirefoxBuilder {
@@ -76,7 +78,7 @@ impl FirefoxBuilder {
             env: HashMap::new(),
             pref: HashMap::from([(
                 "dom.ipc.processCount".to_string(),
-                MultipleTypeMapValue::i32(3),
+                MultipleTypeMapValue::Number(3),
             )]),
         }
     }
@@ -100,7 +102,7 @@ impl FirefoxBuilder {
 
     pub fn add_pref_i32(mut self, key: &str, value: i32) -> Self {
         self.pref
-            .insert(key.to_string(), MultipleTypeMapValue::i32(value));
+            .insert(key.to_string(), MultipleTypeMapValue::Number(value));
         self
     }
 
@@ -136,7 +138,7 @@ pub(crate) struct FirefoxOption {
 
 impl BrowserOption for FirefoxOption {
     fn host(&self) -> Option<&str> {
-        self.host.as_ref().map(|x| x.as_str())
+        self.host.as_deref()
     }
 
     fn port(&self) -> Option<u32> {
@@ -144,7 +146,7 @@ impl BrowserOption for FirefoxOption {
     }
 
     fn driver(&self) -> Option<&str> {
-        self.driver.as_ref().map(|x| x.as_str())
+        self.driver.as_deref()
     }
 
     fn arguments(&self) -> &Vec<String> {
@@ -152,7 +154,7 @@ impl BrowserOption for FirefoxOption {
     }
 
     fn execute(&self) -> Option<&str> {
-        self.exec.as_ref().map(|x| x.as_str())
+        self.exec.as_deref()
     }
 
     fn env(&self) -> &HashMap<std::string::String, std::string::String> {
@@ -165,7 +167,7 @@ impl Display for FirefoxOption {
         f.write_str(format!(r#"{{"browserName": "firefox","moz:firefoxOptions":{{"prefs": {{ {} }},"args":[{}] }}}}"#
         ,self.pref.iter().map(|(key,value)|{
             format!(r#""{key}": {}"#,match value {
-                MultipleTypeMapValue::i32(v) => v.to_string(),
+                MultipleTypeMapValue::Number(v) => v.to_string(),
                 MultipleTypeMapValue::String(v) => format!(r#""{v}""#),
             })
         }).collect::<Vec<String>>().join(",")
@@ -194,7 +196,7 @@ mod tests {
             env: HashMap::new(),
             pref: HashMap::from([(
                 "dom.ipc.processCount".to_string(),
-                MultipleTypeMapValue::i32(4),
+                MultipleTypeMapValue::Number(4),
             )]),
         };
         println!("{f}");

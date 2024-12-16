@@ -39,7 +39,7 @@ impl Display for Element {
 }
 
 impl Element {
-    pub fn find_element<'a>(&self, by: By<'a>) -> SResult<Element> {
+    pub fn find_element(&self, by: By<'_>) -> SResult<Element> {
         let v = self
             .http
             .find_element_from_element(&self.session.session_id, &self.id, by)?;
@@ -51,7 +51,7 @@ impl Element {
         })
     }
 
-    pub fn find_elements<'a>(&self, by: By<'a>) -> SResult<Vec<Element>> {
+    pub fn find_elements(&self, by: By<'_>) -> SResult<Vec<Element>> {
         let v = self
             .http
             .find_elements_from_element(&self.session.session_id, &self.id, by)?;

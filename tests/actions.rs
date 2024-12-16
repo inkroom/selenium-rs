@@ -1,4 +1,3 @@
-use common::sleep;
 use selenium::{By, Key};
 
 mod common;

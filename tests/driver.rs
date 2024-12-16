@@ -1,5 +1,4 @@
-use common::sleep;
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 mod common;
 #[test]
 fn get_page_source() {
