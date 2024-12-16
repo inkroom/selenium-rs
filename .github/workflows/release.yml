@@ -19,9 +19,8 @@ jobs:
         run: |
           sudo apt update -y && sudo apt install firefox firefox-locale-zh-hans fonts-wqy-zenhei  && wget https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux64.tar.gz && tar -zxf geckodriver-v0.35.0-linux64.tar.gz
           chmod +x geckodriver
-          nohup ./geckodriver --port=4892  > gec.log 2>&1 &
       - name: Test
         env:
           HEADLESS: true
         run: |
-          cargo test || cat gec.log
+          cargo test
