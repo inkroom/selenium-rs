@@ -1,10 +1,11 @@
-#![cfg_attr(debug_assertions, allow(dead_code, unused_imports, unused_variables, unused_mut))]
+#![cfg_attr(
+    debug_assertions,
+    allow(dead_code, unused_imports, unused_variables, unused_mut)
+)]
 use std::fmt::{Debug, Display};
 
 // extern crate selenium_manager;
-extern {
-
-}
+extern "C" {}
 
 pub enum SError {
     Message(String),
@@ -32,14 +33,14 @@ impl From<std::io::Error> for SError {
 }
 
 type SResult<T> = Result<T, SError>;
+mod actions;
 pub mod driver;
 pub mod element;
 pub(crate) mod http;
 pub mod option;
 pub mod shadow;
-mod actions;
 
-pub use driver::By;
-pub use driver::TimeoutType;
 pub use actions::Key;
 pub use actions::Origin;
+pub use driver::By;
+pub use driver::TimeoutType;

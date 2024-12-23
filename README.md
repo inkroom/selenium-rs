@@ -46,6 +46,9 @@ let d = Driver::new(option).unwrap();
 d.get("https://github.com").unwrap();
 ```
 
+目前每一个Driver都会启用一个新的子进程，所以项目中最好只有一个Driver对象
+
+
 使用远程server
 ```rust
 let option = FirefoxBuilder::new().host("127.0.0.1").port(3824).build();

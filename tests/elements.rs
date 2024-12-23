@@ -80,22 +80,36 @@ fn clear() {
     assert_eq!("", ele.get_property("value").unwrap());
 }
 
-
 #[test]
-fn send_keys(){
+fn send_keys() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#clear")).unwrap();
     ele.clear().unwrap();
     ele.send_keys("demo测试").unwrap();
 
-    assert_eq!("demo测试",ele.get_property("value").unwrap());
+    assert_eq!("demo测试", ele.get_property("value").unwrap());
 }
 
 #[test]
-fn take_screenshot(){
+fn take_screenshot() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#label")).unwrap();
-    
+
     std::fs::write("element_screenshot.png", ele.take_screenshot().unwrap()).unwrap();
-    
+}
+
+#[test]
+fn is_displayed() {
+    let driver = common::new_driver();
+    let ele = driver.find_element(By::Css("#clear")).unwrap();
+
+    assert_eq!(true, ele.is_displayed().unwrap());
+    assert_eq!(
+        false,
+        driver
+            .find_element(By::Css("#is_displayed_false"))
+            .unwrap()
+            .is_displayed()
+            .unwrap()
+    );
 }

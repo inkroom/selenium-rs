@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fmt::Display};
 
-
 pub(crate) enum MultipleTypeMapValue {
     Number(i32),
     String(String),

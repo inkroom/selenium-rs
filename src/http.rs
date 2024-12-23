@@ -11,7 +11,7 @@ use crate::{
     actions::Device,
     driver::{By, Rect, Session, SwitchToFrame, TimeoutType},
     option::BrowserOption,
-    SError, SResult,
+    Origin, SError, SResult,
 };
 
 #[derive(Deserialize)]
@@ -114,6 +114,10 @@ impl Serialize for By<'_> {
 
         s.end()
     }
+}
+
+mod script {
+    include!(concat!(env!("OUT_DIR"), "/is_displayed.rs"));
 }
 
 impl Http {
@@ -405,11 +409,7 @@ impl Http {
         Ok(session.value.clone())
     }
 
-    pub(crate) fn find_element(
-        &self,
-        session_id: &str,
-        by: By<'_>,
-    ) -> SResult<(String, String)> {
+    pub(crate) fn find_element(&self, session_id: &str, by: By<'_>) -> SResult<(String, String)> {
         let v = minreq::post(format!("{}/session/{}/element", self.url, session_id))
             .with_header("Content-Type", "application/json")
             .with_body(serde_json::to_string(&by)?)
@@ -978,6 +978,32 @@ impl Http {
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(base64::decode(res.value.as_bytes()))
     }
+
+    pub(crate) fn is_element_displayed(&self, session_id: &str, element: Origin) -> SResult<bool> {
+        #[derive(Serialize)]
+        struct TempExecuteScript {
+            script: String,
+            args: Vec<Origin>,
+        }
+        let t = TempExecuteScript {
+            script: format!(
+                "return ({}).apply(null, arguments);",
+                script::IS_DISPLAY_SCRIPT.to_string()
+            ),
+            args: vec![element],
+        };
+
+        let v = minreq::post(format!("{}/session/{}/execute/sync", self.url, session_id))
+            .with_header("Content-Type", "application/json")
+            .with_body(serde_json::to_string(&t)?)
+            .send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::Message(v.as_str()?.to_string()));
+        }
+        let res: ResponseWrapper<bool> = serde_json::from_str(v.as_str()?)?;
+        Ok(res.value)
+    }
 }
 
 impl From<minreq::Error> for SError {
@@ -1079,10 +1105,10 @@ mod tests {
                 arguments: vec!["1".to_string(), "2".to_string()],
                 exec: None,
                 env: HashMap::new(),
-                pref:HashMap::from([(
+                pref: HashMap::from([(
                     "dom.ipc.processCount".to_string(),
                     MultipleTypeMapValue::Number(4),
-                )])
+                )]),
             }),
         };
 

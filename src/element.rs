@@ -7,7 +7,7 @@ use crate::{
     driver::{Rect, Session},
     http::Http,
     shadow::Shadow,
-    By, SResult,
+    By, Origin, SResult,
 };
 
 pub enum SendKey {
@@ -127,5 +127,12 @@ impl Element {
     pub fn take_screenshot(&self) -> SResult<Vec<u8>> {
         self.http
             .take_element_screenshot(&self.session.session_id, &self.id)
+    }
+
+    pub fn is_displayed(&self) -> SResult<bool> {
+        self.http.is_element_displayed(
+            &self.session.session_id,
+            Origin::Element(self.identify.clone(), self.id.clone()),
+        )
     }
 }

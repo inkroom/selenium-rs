@@ -75,9 +75,9 @@ fn key_special() {
     let driver = common::new_driver();
     driver
         .actions()
-        .key_down_special(Key::ENTER)
+        .key_down_special(Key::Enter)
         .key_pause(100)
-        .key_up_special(Key::ENTER)
+        .key_up_special(Key::Enter)
         .perform()
         .unwrap();
 
@@ -101,14 +101,14 @@ fn key_special() {
     // 组合键
     driver
         .actions()
-        .key_down_special(Key::CONTROL)
+        .key_down_special(Key::Control)
         .key_down("e")
         .key_up("e")
-        .key_up_special(Key::CONTROL)
+        .key_up_special(Key::Control)
         .perform()
         .unwrap();
 
-        assert_eq!(
+    assert_eq!(
         "keydown=e 69 ctrl",
         driver
             .find_element(By::Css("#demo"))
@@ -127,15 +127,16 @@ fn key_special() {
 }
 
 #[test]
-fn scroll(){
+fn scroll() {
     let driver = common::new_driver();
 
-    let h:i32 = driver.execute_script("return document.body.offsetHeight", &[]).unwrap();
+    let h: i32 = driver
+        .execute_script("return document.body.offsetHeight", &[])
+        .unwrap();
 
     driver
         .actions()
-        .scroll(0,0,0,h,20,selenium::Origin::Viewport)
+        .scroll(0, 0, 0, h, 20, selenium::Origin::Viewport)
         .perform()
         .unwrap();
-
 }
