@@ -1,5 +1,22 @@
 use std::collections::HashMap;
 mod common;
+
+#[test]
+fn find_element() {
+    let driver = common::new_driver();
+
+    let v = driver.find_element(selenium::By::Css(".not_exist"));
+
+    assert!(
+        if let Err(selenium::SError::Http(status, _msg)) = v {
+            status == 404
+        } else {
+            false
+        },
+        "not exist"
+    );
+}
+
 #[test]
 fn get_page_source() {
     let driver = common::new_driver();

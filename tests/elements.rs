@@ -21,7 +21,14 @@ fn get_css() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#label")).unwrap();
 
-    assert_eq!("rgb(255, 0, 0)", ele.get_css_value("color").unwrap());
+    match driver.browser() {
+        selenium::option::Browser::Firefox => {
+            assert_eq!("rgb(255, 0, 0)", ele.get_css_value("color").unwrap())
+        }
+        selenium::option::Browser::Chrome => {
+            assert_eq!("rgba(255, 0, 0, 1)", ele.get_css_value("color").unwrap())
+        }
+    }
 }
 
 #[test]

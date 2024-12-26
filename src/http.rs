@@ -142,9 +142,8 @@ impl Http {
                 session_id: session.value.session_id.clone(),
             });
         }
-        Err(SError::Message(format!(
-            "status={} {}",
-            v.status_code,
+        Err(SError::Http(v.status_code,format!(
+            "{}",
             v.as_str()?
         )))
     }
@@ -169,7 +168,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let session: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(session.value.clone())
@@ -181,7 +180,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -192,7 +191,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -203,7 +202,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -214,7 +213,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let session: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(session.value.clone())
@@ -229,7 +228,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
@@ -243,7 +242,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<Vec<String>> = serde_json::from_str(v.as_str()?)?;
@@ -257,7 +256,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         Ok(())
@@ -272,7 +271,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<Vec<String>> = serde_json::from_str(v.as_str()?)?;
@@ -287,7 +286,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         #[derive(Deserialize, Debug)]
         struct NewWindowResponse {
@@ -316,7 +315,7 @@ impl Http {
         }
         let v = req.send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         Ok(())
@@ -328,7 +327,7 @@ impl Http {
 
         let v = req.send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         Ok(())
@@ -340,7 +339,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
@@ -354,7 +353,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
@@ -370,7 +369,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
@@ -386,7 +385,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
@@ -402,7 +401,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
@@ -416,14 +415,14 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
         for ele in res.value {
             return Ok(ele);
         }
-        Err(SError::Message("element not found".to_string()))
+        Err(SError::Browser("element not found".to_string()))
     }
 
     pub(crate) fn find_elements(
@@ -437,7 +436,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<Vec<HashMap<String, String>>> = serde_json::from_str(v.as_str()?)?;
@@ -467,14 +466,14 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
         for ele in res.value {
             return Ok(ele);
         }
-        Err(SError::Message("element not found".to_string()))
+        Err(SError::Browser("element not found".to_string()))
     }
 
     pub(crate) fn find_elements_from_element(
@@ -492,7 +491,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<Vec<HashMap<String, String>>> = serde_json::from_str(v.as_str()?)?;
@@ -516,14 +515,14 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
         for ele in res.value {
             return Ok(ele);
         }
-        Err(SError::Message("element not found".to_string()))
+        Err(SError::Browser("element not found".to_string()))
     }
 
     pub(crate) fn get_element_shadow_root(
@@ -539,14 +538,14 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
         for ele in res.value {
             return Ok(ele);
         }
-        Err(SError::Message("element shadow not found".to_string()))
+        Err(SError::Browser("element shadow not found".to_string()))
     }
 
     pub(crate) fn find_element_from_shadow_root(
@@ -564,14 +563,14 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
         for ele in res.value {
             return Ok(ele);
         }
-        Err(SError::Message("element not found".to_string()))
+        Err(SError::Browser("element not found".to_string()))
     }
 
     pub(crate) fn find_elements_from_shadow_root(
@@ -589,7 +588,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<Vec<HashMap<String, String>>> = serde_json::from_str(v.as_str()?)?;
@@ -613,7 +612,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<bool> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -633,7 +632,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -653,7 +652,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -673,7 +672,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -688,7 +687,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -707,7 +706,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -722,7 +721,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -737,7 +736,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<bool> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -753,7 +752,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -768,7 +767,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -794,7 +793,7 @@ impl Http {
         .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -805,7 +804,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -833,7 +832,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<T> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -855,7 +854,7 @@ impl Http {
         let v = req.send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -867,7 +866,7 @@ impl Http {
         let v = req.send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
 
         let res: ResponseWrapper<HashMap<String, u32>> = serde_json::from_str(v.as_str()?)?;
@@ -901,7 +900,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -912,7 +911,7 @@ impl Http {
             .with_body("{}")
             .send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -923,7 +922,7 @@ impl Http {
             .with_body("{}")
             .send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -933,7 +932,7 @@ impl Http {
             .with_header("Content-Type", "application/json")
             .send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -945,7 +944,7 @@ impl Http {
             .with_body(format!(r#"{{"text":"{text}"}}"#))
             .send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         Ok(())
     }
@@ -955,7 +954,7 @@ impl Http {
             .with_body("{}")
             .send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(base64::decode(res.value.as_bytes()))
@@ -973,7 +972,7 @@ impl Http {
         .with_body("{}")
         .send()?;
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(base64::decode(res.value.as_bytes()))
@@ -999,7 +998,7 @@ impl Http {
             .send()?;
 
         if v.status_code != 200 {
-            return Err(SError::Message(v.as_str()?.to_string()));
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
         let res: ResponseWrapper<bool> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
@@ -1008,13 +1007,13 @@ impl Http {
 
 impl From<minreq::Error> for SError {
     fn from(value: minreq::Error) -> Self {
-        SError::Message(format!("{}", value))
+        SError::Http(-1, format!("{}", value))
     }
 }
 
 impl From<serde_json::Error> for SError {
     fn from(value: serde_json::Error) -> Self {
-        SError::Message(format!("{}", value))
+        SError::Http(-2, format!("{}", value))
     }
 }
 
@@ -1082,7 +1081,10 @@ mod base64 {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{driver::Rect, option::MultipleTypeMapValue};
+    use crate::{
+        driver::Rect,
+        option::{FirefoxOption, MultipleTypeMapValue},
+    };
 
     use super::Capability;
 
@@ -1098,9 +1100,8 @@ mod tests {
         let c = Capability {
             browser_name: None,
             platform_name: None,
-            always_match: Some(crate::option::FirefoxOption {
-                host: None,
-                port: None,
+            always_match: Some(FirefoxOption {
+                url: None,
                 driver: None,
                 arguments: vec!["1".to_string(), "2".to_string()],
                 exec: None,
@@ -1109,16 +1110,18 @@ mod tests {
                     "dom.ipc.processCount".to_string(),
                     MultipleTypeMapValue::Number(4),
                 )]),
+                proxy: None,
+                binary: None,
             }),
         };
 
         println!("{c}");
         assert_eq!(
-            r#"{"capabilities":{"alwaysMatch":{"browserName": "firefox","moz:firefoxOptions":{"prefs": { "dom.ipc.processCount": 4 },"args":["1","2"] }}}}"#,
+            r#"{"capabilities":{"alwaysMatch":{"browserName":"firefox","moz:firefoxOptions":{"args":["1","2"],"prefs":{"dom.ipc.processCount":4}}}}}"#,
             format!("{c}")
         );
 
-        let c: Capability<crate::option::FirefoxOption> = Capability {
+        let c: Capability<FirefoxOption> = Capability {
             browser_name: None,
             platform_name: None,
             always_match: None,

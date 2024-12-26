@@ -1,9 +1,11 @@
 use std::{
     collections::HashMap,
     fmt::Display,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
     process::{Child, Command, Stdio},
     rc::Rc,
+    thread::sleep,
+    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +14,7 @@ use crate::{
     actions::Action,
     element::Element,
     http::{Capability, Http},
-    option::BrowserOption,
+    option::{Browser, BrowserOption},
     SError, SResult,
 };
 
@@ -46,21 +48,59 @@ impl DriverProcess {
             .port()
     }
 
-    fn start_driver(exec: &str, env: &HashMap<String, String>) -> SResult<(Child, u16)> {
+    fn start_driver(
+        exec: &str,
+        env: &HashMap<String, String>,
+        browser: Browser,
+    ) -> SResult<(Child, u16)> {
         let port = Self::get_available_port();
-        let mut s = Command::new(exec)
-            .arg("--port")
-            .arg(port.to_string())
-            // .env("DISPLAY", "1")
+        let mut s = Command::new(exec);
+        match browser {
+            Browser::Firefox => s.arg("--port").arg(port.to_string()),
+            Browser::Chrome => s.arg(format!("--port={port}")),
+        };
+        let mut s = s
             .envs(env)
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()?;
 
-        let mut m = BufReader::new(s.stdout.as_mut().unwrap());
-        let mut line = String::new();
-        // 暂时找不到设置超时的方法，可能会卡在这一步
-        m.read_line(&mut line)?;
+        // 测试启动是否结束
+        for _ in 0..3 {
+            if let Err(e) = minreq::get(format!("http://127.0.0.1:{port}")).send() {
+                if e.to_string().contains("refuse") {
+                    // 连接失败，查看是否退出
+                    match s.try_wait() {
+                        Ok(Some(e)) => {
+                            // 已经退出
+                            return Err(SError::Driver(format!(
+                                "start driver fail, exit code : {}",
+                                e.code().unwrap_or(-1)
+                            )));
+                        }
+                        Ok(None) => {
+                            // 没有退出，就延迟等待
+                            sleep(Duration::from_millis(500));
+                        }
+                        Err(e) => return Err(SError::Driver(e.to_string())),
+                    }
+                }
+            };
+        }
+
+        // if let Some(s) = s.stdout.as_mut() {
+        //     let mut m = BufReader::new(s);
+        //     let mut line = String::new();
+        //     // 暂时找不到设置超时的方法，可能会卡在这一步
+        //     m.read_line(&mut line)?;
+        //     sleep(Duration::from_secs(1));
+        //     println!("stdout = {line}");
+        // }else{
+        //     sleep(Duration::from_secs(60));
+        //     // 没有输出流，先直接报错吧
+        //     return Err(SError::Message("start driver fail, reason: get stdout fail".to_string()));
+        // }
+        // sleep(Duration::from_secs(1));
         Ok((s, port))
     }
 
@@ -68,13 +108,16 @@ impl DriverProcess {
     fn start_monitor(driver_pid: u32) -> SResult<Child> {
         let v = Command::new("/bin/sh")
             .arg("-c")
+            .stderr(Stdio::null())
+            .stdout(Stdio::null())
+            .stdin(Stdio::null())
             .arg(format!(
                 "while kill -0 {} 2>/dev/null; do sleep 0.5; done; kill {}", // do sleep 后跟着的就是定期检查的间隔时间
                 std::process::id(),
                 driver_pid
             ))
             .spawn()
-            .map_err(|e| SError::Message(e.to_string()))?;
+            .map_err(|e| SError::Driver(e.to_string()))?;
         Ok(v)
     }
 
@@ -89,12 +132,24 @@ impl DriverProcess {
                 driver_pid
             ))
             .spawn()
-            .map_err(|e| SError::Message(e.to_string()))?;
+            .map_err(|e| SError::Driver(e.to_string()))?;
         Ok(v)
     }
-    pub(crate) fn new(driver: &str, env: &HashMap<String, String>) -> SResult<(Self, u16)> {
-        let c = Self::start_driver(driver, env)?;
+    pub(crate) fn new(
+        driver: &str,
+        env: &HashMap<String, String>,
+        browser: Browser,
+    ) -> SResult<(Self, u16)> {
+        let mut c = Self::start_driver(driver, env, browser)?;
         let m = Self::start_monitor(c.0.id())?;
+        if let Ok(Some(exit)) = c.0.try_wait() {
+            let mut m = BufReader::new(c.0.stderr.as_mut().unwrap());
+            let mut line = String::new();
+            // 暂时找不到设置超时的方法，可能会卡在这一步
+            m.read_to_string(&mut line)?;
+
+            return Err(SError::Driver(format!("start driver fail, reason: {line}")));
+        }
         Ok((
             Self {
                 driver: c.0,
@@ -109,7 +164,7 @@ pub struct Driver {
     pub(crate) session: Rc<Session>,
     pub(crate) http: Rc<Http>,
     process: Option<DriverProcess>,
-    // pub(crate) quited: bool,
+    browser: Browser,
 }
 #[cfg(debug_assertions)]
 impl Drop for Driver {
@@ -155,6 +210,26 @@ pub struct Rect {
     pub height: Option<f32>,
 }
 
+impl Rect {
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Rect {
+            x: Some(x),
+            y: Some(y),
+            width: Some(width),
+            height: Some(height),
+        }
+    }
+
+    pub fn size(width: f32, height: f32) -> Self {
+        Rect {
+            x: Some(0.0),
+            y: Some(0.0),
+            width: Some(width),
+            height: Some(height),
+        }
+    }
+}
+
 impl Display for NewWindowType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -166,17 +241,17 @@ impl Display for NewWindowType {
 impl Driver {
     pub fn new(option: impl BrowserOption) -> SResult<Self> {
         // 连接远程
-        if option.host().is_some() && option.port().is_some() {
-            let url = format!(
-                "http://{}:{}",
-                option.host().unwrap(),
-                option.port().unwrap()
-            );
-            let http = Http::new(url.as_str());
+        if let Some(url) = option.url() {
+            #[cfg(not(feature = "https"))]
+            if url.contains("https://") {
+                panic!("enable https features to use https protocol");
+            }
 
+            let http = Http::new(url);
+            let b = option.browser();
             // 开启session
             let cap = Capability {
-                browser_name: None,
+                browser_name: Some(format!("{}", option.browser())),
                 platform_name: None,
                 always_match: Some(option),
             };
@@ -185,10 +260,12 @@ impl Driver {
                 session: Rc::new(session),
                 http: Rc::new(http),
                 process: None,
+                browser: b,
             });
         } else if let Some(driver) = option.driver() {
+            let b = option.browser();
             // 启用driver进程
-            let (s, port) = DriverProcess::new(driver, option.env())?;
+            let (s, port) = DriverProcess::new(driver, option.env(), option.browser())?;
             let http = Http::new(format!("http://127.0.0.1:{port}").as_str());
             // 开启session
             let cap = Capability {
@@ -203,6 +280,7 @@ impl Driver {
                         session: Rc::new(session),
                         http: Rc::new(http),
                         process: Some(s),
+                        browser: b,
                     });
                 }
                 Err(e) => {
@@ -212,6 +290,10 @@ impl Driver {
             }
         }
         unimplemented!()
+    }
+
+    pub fn browser(&self) -> Browser {
+        self.browser.clone()
     }
 
     pub fn quit(&self) -> SResult<()> {
@@ -346,6 +428,15 @@ impl Driver {
     /// 由于脚本执行返回的数据类型相当复杂，而且协议里并没有规定告知返回的数据类型，所以区分部分情况几乎不可能
     ///
     /// 建议执行的脚本只返回基础数据类型
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use selenium::option::FirefoxBuilder;
+    /// use selenium::driver::Driver;
+    /// let driver = Driver::new(FirefoxBuilder::new().build()).unwrap();
+    /// let _:() = driver.execute_script("location.reload()", &[]).unwrap();
+    /// ```
     ///
     pub fn execute_script<T: serde::de::DeserializeOwned>(
         &self,

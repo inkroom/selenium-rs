@@ -1,6 +1,6 @@
 # selenium
 
-[selenium](https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.selenium.dev/&ved=2ahUKEwj3zcTJ4ZyKAxWiQPUHHTlGFycQFnoECCMQAQ&usg=AOvVaw38IyEsg2ARkRX6lSh_KzqM)的rust实现
+[selenium](https://www.selenium.dev/)的rust实现
 
 ## 为何有此项目
 
@@ -11,7 +11,7 @@
 
 ## browser driver
 
-目前只测试了firefox
+目前只测试了firefox和chrome
 
 | Browser           | Component                        |
 | :---------------- | :------------------------------- |
@@ -24,6 +24,12 @@
 
 
 ## use
+
+### 引入
+
+```shell
+cargo add selenium --git https://github.com/inkroom/selenium-rs
+```
 
 ### 启动
 使用本地driver
