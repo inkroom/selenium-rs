@@ -15,6 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          path: selenium
           fetch-depth: 0
           repository: SeleniumHQ/selenium
       - uses: dtolnay/rust-toolchain@stable
@@ -36,10 +37,12 @@ jobs:
           sudo apt update -y 
           sudo apt install -y libgtk-3-dev
           cargo run -- --browser chrome --output json
-          BROWSER_DRIVER=$(cargo run -- --browser chrome --output json | jq '.result.driver_path')
-          BROWSER_BINARY=$(cargo run -- --browser chrome --output json | jq '.result.browser_path')
-          export "BROWSER_DRIVER=$BROWSER_DRIVER" >> $GITHUB_OUTPUT
-          export "BROWSER_BINARY=$BROWSER_BINARY" >> $GITHUB_OUTPUT
+          BROWSER_DRIVER=$(cargo run -- --browser chrome --output json | jq --raw-output '.result.driver_path')
+          BROWSER_BINARY=$(cargo run -- --browser chrome --output json | jq --raw-output '.result.browser_path')
+          echo $BROWSER_DRIVER
+          echo $BROWSER_BINARY
+          echo "BROWSER_DRIVER=$BROWSER_DRIVER" >> $GITHUB_OUTPUT
+          echo "BROWSER_BINARY=$BROWSER_BINARY" >> $GITHUB_OUTPUT
 
       - name: Test Chrome
         env:
@@ -47,5 +50,6 @@ jobs:
           HEADLESS: true
           BROWSER_BINARY: ${{ steps.chrome.outputs.BROWSER_BINARY }}
           BROWSER_DRIVER: ${{ steps.chrome.outputs.BROWSER_DRIVER }}
+          RUST_TEST_THREADS: 1
         run: |
           cargo test

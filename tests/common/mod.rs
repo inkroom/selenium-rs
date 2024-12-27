@@ -2,69 +2,72 @@ use std::time::Duration;
 
 use selenium::{
     driver::Driver,
-    option::{ChromeBuilder, FirefoxBuilder},
+    option::{Browser, ChromeBuilder, FirefoxBuilder, Proxy, SafariBuilder},
     SError,
 };
 
 fn use_firefox() -> Driver {
     Driver::new(
         if std::env::var("HEADLESS").is_ok() {
-            FirefoxBuilder::new()
-                .driver(
-                    format!(
-                        "{}/geckodriver",
-                        std::env::current_dir()
-                            .map_err(|f| SError::Message(f.to_string()))
-                            .unwrap()
-                            .display()
-                    )
-                    .as_str(),
-                )
-                .head_leass()
+            FirefoxBuilder::new().head_leass()
         } else {
             FirefoxBuilder::new()
-            // .url("http://127.0.0.1:4845")
-            .driver(
-                format!(
-                    "{}/geckodriver",
-                    std::env::current_dir()
-                        .map_err(|f| SError::Message(f.to_string()))
-                        .unwrap()
-                        .display()
-                )
-                .as_str(),
-            )
         }
+        .driver(
+            format!(
+                "{}/geckodriver",
+                std::env::current_dir()
+                    .map_err(|f| SError::Message(f.to_string()))
+                    .unwrap()
+                    .display()
+            )
+            .as_str(),
+        )
+        // .binary("/usr/bin/firefox")
         .private()
         .build(),
     )
     .unwrap()
 }
-
+fn get_available_port() -> u16 {
+    std::net::TcpListener::bind("0.0.0.0:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port()
+}
 fn use_chrome() -> Driver {
     Driver::new(
         if std::env::var("HEADLESS").is_ok() {
             ChromeBuilder::new()
-                .driver(
-                    std::env::var("BROWSER_DRIVER").unwrap()
-                    .as_str(),
-                ).binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
+                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
+                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
                 .head_leass()
         } else {
             ChromeBuilder::new()
-            .url("http://127.0.0.1:13324")
-            .driver(
-                std::env::var("BROWSER_DRIVER").unwrap().as_str()
-            ).binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
+                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
+                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         }
         .add_argument("--no-zygote")
         .add_argument("--disable-gpu")
-        // .add_argument("--remote-debugging-port=9222")
+        .add_argument(format!("--remote-debugging-port={}", get_available_port()).as_str())
         .add_argument("--disable-dev-shm-usage")
         .add_argument("--no-sandbox")
         .build(),
     )
     .unwrap()
+}
+/// 因为mac的设计问题，当quit的时候程序并没有完全退出，而且如果启用了多个session，总会有各种问题，总之就是safari的driver有些问题，所以只跑单个test没问题，一起并发跑就不行
+/// 使用 RUST_TEST_THREADS=1 cargo test 限制单线程
+fn use_safari() -> Driver {
+    // 需要睡眠等待driver处理
+    sleep(3);
+    let v = Driver::new(SafariBuilder::new().url("http://127.0.0.1:48273").build()).unwrap();
+    v.set_timeouts(selenium::TimeoutType::Implicit(100))
+        .unwrap();
+    v.set_timeouts(selenium::TimeoutType::PageLoad(1500))
+        .unwrap();
+    v
 }
 
 pub fn new_driver() -> Driver {
@@ -74,6 +77,7 @@ pub fn new_driver() -> Driver {
     {
         "firefox" => use_firefox(),
         "chrome" => use_chrome(),
+        "safari" => use_safari(),
         _ => use_firefox(),
     };
     d.get(
@@ -87,6 +91,9 @@ pub fn new_driver() -> Driver {
         .as_str(),
     )
     .unwrap();
+    if let Browser::Safari = d.browser() {
+        sleep(2);
+    }
     d
 }
 

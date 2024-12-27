@@ -28,6 +28,9 @@ fn get_css() {
         selenium::option::Browser::Chrome => {
             assert_eq!("rgba(255, 0, 0, 1)", ele.get_css_value("color").unwrap())
         }
+        selenium::option::Browser::Safari => {
+            assert_eq!("rgb(255, 0, 0)", ele.get_css_value("color").unwrap())
+        }
     }
 }
 
@@ -43,8 +46,14 @@ fn get_text() {
 fn get_tag_name() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#p")).unwrap();
-
-    assert_eq!("p", ele.get_tag_name().unwrap());
+    match driver.browser() {
+        selenium::option::Browser::Safari => {
+            assert_eq!("P", ele.get_tag_name().unwrap());
+        }
+        _ => {
+            assert_eq!("p", ele.get_tag_name().unwrap());
+        }
+    }
 }
 
 #[test]

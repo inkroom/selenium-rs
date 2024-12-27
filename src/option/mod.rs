@@ -167,6 +167,7 @@ macro_rules! browser_option{
 pub enum Browser {
     Firefox,
     Chrome,
+    Safari,
 }
 
 impl Display for Browser {
@@ -174,6 +175,7 @@ impl Display for Browser {
         match self {
             Browser::Firefox => f.write_str("firefox"),
             Browser::Chrome => f.write_str("chrome"),
+            Browser::Safari => f.write_str("safari"),
         }
     }
 }
@@ -464,6 +466,7 @@ impl Proxy {
 
 mod chrome;
 mod firefox;
+mod safari;
 
 pub use firefox::FirefoxBuilder;
 pub use firefox::FirefoxOption;
@@ -471,3 +474,5 @@ pub use firefox::FirefoxOption;
 pub use chrome::ChromeBuilder;
 pub use chrome::ChromeOption;
 
+pub use safari::SafariBuilder;
+pub use safari::SafariOption;

@@ -58,11 +58,14 @@ impl DriverProcess {
         match browser {
             Browser::Firefox => s.arg("--port").arg(port.to_string()),
             Browser::Chrome => s.arg(format!("--port={port}")),
+            Browser::Safari => s.arg("--port").arg(port.to_string()),
         };
         let mut s = s
             .envs(env)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            // .stdout(Stdio::from(std::fs::OpenOptions::new().create(true).append(true).open("1.log")?))
+            // .stderr(Stdio::from(std::fs::OpenOptions::new().create(true).append(true).open("1e.log")?))
             .spawn()?;
 
         // 测试启动是否结束
@@ -87,20 +90,6 @@ impl DriverProcess {
                 }
             };
         }
-
-        // if let Some(s) = s.stdout.as_mut() {
-        //     let mut m = BufReader::new(s);
-        //     let mut line = String::new();
-        //     // 暂时找不到设置超时的方法，可能会卡在这一步
-        //     m.read_line(&mut line)?;
-        //     sleep(Duration::from_secs(1));
-        //     println!("stdout = {line}");
-        // }else{
-        //     sleep(Duration::from_secs(60));
-        //     // 没有输出流，先直接报错吧
-        //     return Err(SError::Message("start driver fail, reason: get stdout fail".to_string()));
-        // }
-        // sleep(Duration::from_secs(1));
         Ok((s, port))
     }
 
@@ -135,6 +124,23 @@ impl DriverProcess {
             .map_err(|e| SError::Driver(e.to_string()))?;
         Ok(v)
     }
+
+    pub(crate) fn get_err(&mut self) -> Result<String, SError> {
+        if let Some(v) = &mut self.driver.stderr {
+            let mut r = timeout_readwrite::TimeoutReader::new(v, Duration::from_secs(2));
+            // let mut r = BufReader::new(v);
+
+            let mut res = String::new();
+            return match r.read_to_string(&mut res) {
+                Ok(v) => Ok(res),
+                Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => Ok(res),
+                Err(ref e) => Err(SError::Driver(e.to_string())),
+            };
+        }
+
+        Ok(String::new())
+    }
+
     pub(crate) fn new(
         driver: &str,
         env: &HashMap<String, String>,
@@ -143,12 +149,22 @@ impl DriverProcess {
         let mut c = Self::start_driver(driver, env, browser)?;
         let m = Self::start_monitor(c.0.id())?;
         if let Ok(Some(exit)) = c.0.try_wait() {
-            let mut m = BufReader::new(c.0.stderr.as_mut().unwrap());
-            let mut line = String::new();
-            // 暂时找不到设置超时的方法，可能会卡在这一步
-            m.read_to_string(&mut line)?;
+            if let Some(v) = c.0.stderr {
+                let mut r = timeout_readwrite::TimeoutReader::new(v, Duration::from_secs(2));
 
-            return Err(SError::Driver(format!("start driver fail, reason: {line}")));
+                let mut res = String::new();
+                return match r.read_to_string(&mut res) {
+                    Ok(v) => Err(SError::Driver(format!("start driver fail,reason: {res}"))),
+                    Err(e) => Err(SError::Driver(format!(
+                        "start driver fail,exit {}",
+                        exit.code().unwrap_or(-1)
+                    ))),
+                };
+            }
+            return Err(SError::Driver(format!(
+                "start driver fail,exit {}",
+                exit.code().unwrap_or(-1)
+            )));
         }
         Ok((
             Self {
@@ -183,7 +199,7 @@ pub enum SwitchToFrame {
     Number(usize),
     Element(String),
 }
-
+/// 单位都是毫秒
 pub enum TimeoutType {
     Script(u32),
     PageLoad(u32),
@@ -265,7 +281,7 @@ impl Driver {
         } else if let Some(driver) = option.driver() {
             let b = option.browser();
             // 启用driver进程
-            let (s, port) = DriverProcess::new(driver, option.env(), option.browser())?;
+            let (mut s, port) = DriverProcess::new(driver, option.env(), option.browser())?;
             let http = Http::new(format!("http://127.0.0.1:{port}").as_str());
             // 开启session
             let cap = Capability {
@@ -284,7 +300,19 @@ impl Driver {
                     });
                 }
                 Err(e) => {
-                    drop(s);
+                    if let SError::Http(status, err) = &e {
+                        if status == &500 {
+                            if err.contains("Process unexpectedly closed with status 1") {
+                                // firefox driver启动失败
+                                if let Ok(v) = s.get_err() {
+                                    return Err(SError::Driver(format!("Driver error msg: {v}")));
+                                } else {
+                                    return Err(SError::Driver(format!("{}", err)));
+                                }
+                            }
+                        }
+                    }
+
                     return Err(e);
                 }
             }
