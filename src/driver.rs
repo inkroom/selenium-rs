@@ -212,6 +212,8 @@ pub enum By<'a> {
     ParitialLinkText(&'a str),
     TagName(&'a str),
     XPath(&'a str),
+    Class(&'a str),
+    Id(&'a str),
 }
 
 #[derive(Deserialize, Clone, Serialize, Debug)]

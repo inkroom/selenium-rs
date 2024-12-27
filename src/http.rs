@@ -110,6 +110,14 @@ impl Serialize for By<'_> {
                 s.serialize_field("using", "xpath")?;
                 s.serialize_field("value", v)?;
             }
+            Self::Id(v) => {
+                s.serialize_field("using", "css selector")?;
+                s.serialize_field("value", format!("#{v}").as_str())?;
+            }
+            Self::Class(v) => {
+                s.serialize_field("using", "css selector")?;
+                s.serialize_field("value", format!(".{v}").as_str())?;
+            }
         }
 
         s.end()
@@ -142,10 +150,7 @@ impl Http {
                 session_id: session.value.session_id.clone(),
             });
         }
-        Err(SError::Http(v.status_code,format!(
-            "{}",
-            v.as_str()?
-        )))
+        Err(SError::Http(v.status_code, format!("{}", v.as_str()?)))
     }
 
     pub(crate) fn delete_session(&self, session_id: &str) -> SResult<()> {
