@@ -7,6 +7,7 @@ use crate::option::MultipleTypeMapValue;
 use super::{Browser, BrowserOption, Proxy};
 
 browser_option!(
+    2,
     FirefoxBuilder,
     Browser::Firefox,
     pub struct FirefoxOption {}
@@ -89,7 +90,6 @@ mod tests {
             driver: None,
             binary: Some("3".to_string()),
             arguments: vec!["1".to_string(), "2".to_string()],
-            exec: None,
             env: HashMap::new(),
             pref: HashMap::from([(
                 "dom.ipc.processCount".to_string(),

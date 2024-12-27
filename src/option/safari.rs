@@ -7,25 +7,12 @@ use crate::option::MultipleTypeMapValue;
 use super::{Browser, BrowserOption, Proxy};
 
 browser_option!(
+    1,
     SafariBuilder,
     Browser::Safari,
     pub struct SafariOption {}
 );
 
-impl SafariBuilder {
-    ///
-    /// 设置为headless模式
-    ///
-    pub fn head_leass(self) -> Self {
-        self.add_argument("-headless")
-    }
-    ///
-    /// 设置为隐私模式
-    ///
-    pub fn private(self) -> Self {
-        self.add_argument("--private-window")
-    }
-}
 impl Serialize for SafariOption {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -64,10 +51,7 @@ mod tests {
             url: None,
             driver: None,
             binary: Some("3".to_string()),
-            arguments: vec!["1".to_string(), "2".to_string()],
-            exec: None,
             env: HashMap::new(),
-            pref: HashMap::new(),
             proxy: None,
         };
         println!("{}", f);

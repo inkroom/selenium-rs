@@ -7,7 +7,9 @@ use serde::{
 
 #[macro_export]
 macro_rules! browser_option{
+    // 只实现 BrowserOption的
     (
+        1,
         $builder_name:ident,
         $browser:expr,
      // meta data about struct
@@ -20,118 +22,140 @@ macro_rules! browser_option{
         ),*$(,)?
     }
     ) => {
+        $(#[$meta])*
+        $vis struct $struct_name{
+            pub(crate) url: Option<String>,
+            pub(crate) driver: Option<String>,
+            pub(crate) binary: Option<String>,
+            pub(crate) env: std::collections::HashMap<String, String>,
+            pub(crate) proxy:Option<$crate::option::Proxy>,
+            $(
+                $(#[$field_meta])*
+                $field_vis $field_name : $field_type,
+            )*
+        }
 
-            $(#[$meta])*
-            $vis struct $struct_name{
-                pub(crate) url: Option<String>,
-                pub(crate) driver: Option<String>,
-                pub(crate) binary: Option<String>,
-                pub(crate) arguments: Vec<String>,
-                pub(crate) exec: Option<String>,
-                pub(crate) env: std::collections::HashMap<String, String>,
-                pub(crate) pref: std::collections::HashMap<String,  $crate::option::MultipleTypeMapValue>,
-                pub(crate) proxy: Option<Proxy>,
-                $(
-                    $(#[$field_meta])*
-                    $field_vis $field_name : $field_type,
-                )*
+        $vis struct $builder_name{
+            pub(crate) url: Option<String>,
+            pub(crate) driver: Option<String>,
+            pub(crate) binary: Option<String>,
+            pub(crate) env: std::collections::HashMap<String, String>,
+            pub(crate) proxy:Option<$crate::option::Proxy>,
+            $(
+                $(#[$field_meta])*
+                $field_vis $field_name : $field_type,
+            )*
+        }
+
+        impl BrowserOption for $struct_name {
+            fn url(&self) -> Option<&str> {
+                self.url.as_deref()
             }
 
-            $vis struct $builder_name{
-                pub(crate) url: Option<String>,
-                pub(crate) driver: Option<String>,
-                pub(crate) binary: Option<String>,
-                pub(crate) arguments: Vec<String>,
-                pub(crate) exec: Option<String>,
-                pub(crate) env: std::collections::HashMap<String, String>,
-                pub(crate) pref: std::collections::HashMap<String, $crate::option::MultipleTypeMapValue>,
-                pub(crate) proxy:Option<$crate::option::Proxy>,
-                $(
-                    $(#[$field_meta])*
-                    $field_vis $field_name : $field_type,
-                )*
+            fn driver(&self) -> Option<&str> {
+                self.driver.as_deref()
             }
 
-            impl BrowserOption for $struct_name {
-                fn url(&self) -> Option<&str> {
-                    self.url.as_deref()
-                }
+            fn env(&self) -> &std::collections::HashMap<std::string::String, std::string::String> {
+                &self.env
+            }
 
-                fn driver(&self) -> Option<&str> {
-                    self.driver.as_deref()
-                }
+            fn browser(&self)->$crate::option::Browser{
+                $browser
+            }
+        }
 
-                fn arguments(&self) -> &Vec<String> {
-                    &self.arguments
-                }
+        impl $builder_name {
+            /// 用于远程，如果使用https,需要开启 https features
+            /// 优先级高于driver
+            pub fn url(mut self, url: &str) -> Self {
+                self.url = Some(url.to_string());
+                self
+            }
+            /// 设置 driver 文件路径
+            pub fn driver(mut self, path: &str) -> Self {
+                self.driver = Some(path.to_string());
+                self
+            }
+            /// 浏览器可执行文件路径
+            pub fn binary(mut self, binary: &str) -> Self {
+                self.binary = Some(binary.to_string());
+                self
+            }
+            /// 代理
+            pub fn proxy(mut self, proxy:Proxy) -> Self {
+                self.proxy = Some(proxy);
+                self
+            }
 
-                fn execute(&self) -> Option<&str> {
-                    self.exec.as_deref()
-                }
+            pub fn new() -> Self {
+                Self {
+                    url: None,
+                    driver: None,
+                    binary: None,
+                    env: std::collections::HashMap::new(),
+                    proxy: None,
+                    $(
 
-                fn env(&self) -> &std::collections::HashMap<std::string::String, std::string::String> {
-                    &self.env
-                }
-
-                fn proxy(&self) -> Option<&$crate::option::Proxy> {
-                    self.proxy.as_ref()
-                }
-
-                fn browser(&self)->$crate::option::Browser{
-                    $browser
+                            $field_name : <$field_type>::default(),
+                    )*
                 }
             }
+            /// 传递给driver的环境变量，默认会继承当前环境
+            pub fn add_env(mut self, key: &str, value: &str) -> Self {
+                self.env.insert(key.to_string(), value.to_string());
+                self
+            }
+
+            pub fn build(self) -> $struct_name {
+                $struct_name {
+                    url: self.url,
+                    driver: self.driver,
+                    binary: self.binary,
+                    env: self.env,
+                    proxy:self.proxy,
+                    $(
+
+                         $field_name : self.$field_name,
+                    )*
+                }
+            }
+        }
+    };
+    // 在1的基础上实现了arg和pref
+    (
+        2,
+        $builder_name:ident,
+        $browser:expr,
+        // meta data about struct
+        $(#[$meta:meta])*
+        $vis:vis struct $struct_name:ident {
+            $(
+            // meta data about field
+            $(#[$field_meta:meta])*
+            $field_vis:vis $field_name:ident : $field_type:ty
+            ),*$(,)?
+        }
+    ) => {
+            browser_option!(1,
+                $builder_name,$browser,
+                $(#[$meta])*
+                $vis struct $struct_name{
+                    pub(crate) arguments: Vec<String>,
+                    pub(crate) pref: std::collections::HashMap<String, $crate::option::MultipleTypeMapValue>,
+                    $(
+                        $(#[$field_meta])*
+                        $field_vis $field_name : $field_type,
+                    )*
+                }
+            );
 
             impl $builder_name {
-                pub fn url(mut self, url: &str) -> Self {
-                    self.url = Some(url.to_string());
-                    self
-                }
-
-                pub fn driver(mut self, path: &str) -> Self {
-                    self.driver = Some(path.to_string());
-                    self
-                }
-
-                pub fn binary(mut self, binary: &str) -> Self {
-                    self.binary = Some(binary.to_string());
-                    self
-                }
-
+                /// 传递给浏览器的启动参数
                 pub fn add_argument(mut self, arg: &str) -> Self {
                     self.arguments.push(arg.to_string());
                     self
                 }
-
-                pub fn execute(mut self, path: &str) -> Self {
-                    self.exec = Some(path.to_string());
-                    self
-                }
-
-                pub fn proxy(mut self, proxy:Proxy) -> Self {
-                    self.proxy = Some(proxy);
-                    self
-                }
-
-
-                pub fn new() -> Self {
-                    Self {
-                        url: None,
-                        driver: None,
-                        binary: None,
-                        arguments: Vec::new(),
-                        exec: None,
-                        env: std::collections::HashMap::new(),
-                        pref: std::collections::HashMap::new(),
-                        proxy:None,
-                    }
-                }
-
-                pub fn add_env(mut self, key: &str, value: &str) -> Self {
-                    self.env.insert(key.to_string(), value.to_string());
-                    self
-                }
-
                 pub fn add_pref_i32(mut self, key: &str, value: i32) -> Self {
                     self.pref
                         .insert(key.to_string(), $crate::option::MultipleTypeMapValue::Number(value));
@@ -145,24 +169,9 @@ macro_rules! browser_option{
                     );
                     self
                 }
-
-                pub fn build(self) -> impl BrowserOption {
-                    $struct_name {
-                        url: self.url,
-                        driver: self.driver,
-                        arguments: self.arguments,
-                        binary: self.binary,
-                        exec: self.exec,
-                        env: self.env,
-                        pref: self.pref,
-                        proxy:self.proxy,
-                    }
-                }
             }
-
-
+        }
     }
-}
 #[derive(Clone)]
 pub enum Browser {
     Firefox,
@@ -224,15 +233,7 @@ pub trait BrowserOption: Display {
     ///
     fn driver(&self) -> Option<&str>;
 
-    fn arguments(&self) -> &Vec<String>;
-    ///
-    /// 浏览器可执行文件位置
-    ///
-    fn execute(&self) -> Option<&str>;
-
     fn env(&self) -> &HashMap<std::string::String, std::string::String>;
-    /// proxy
-    fn proxy(&self) -> Option<&Proxy>;
 
     fn browser(&self) -> Browser;
 }

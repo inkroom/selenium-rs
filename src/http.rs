@@ -1109,7 +1109,6 @@ mod tests {
                 url: None,
                 driver: None,
                 arguments: vec!["1".to_string(), "2".to_string()],
-                exec: None,
                 env: HashMap::new(),
                 pref: HashMap::from([(
                     "dom.ipc.processCount".to_string(),

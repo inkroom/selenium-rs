@@ -52,4 +52,4 @@ jobs:
           BROWSER_DRIVER: ${{ steps.chrome.outputs.BROWSER_DRIVER }}
           RUST_TEST_THREADS: 1
         run: |
-          cargo test
+          cargo test -j 1
