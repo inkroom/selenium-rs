@@ -628,7 +628,7 @@ impl Http {
         session_id: &str,
         element_id: &str,
         name: &str,
-    ) -> SResult<String> {
+    ) -> SResult<Option<String>> {
         let v = minreq::get(format!(
             "{}/session/{}/element/{}/attribute/{}",
             self.url, session_id, element_id, name
@@ -639,7 +639,7 @@ impl Http {
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<Option<String>> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
     }
 
@@ -648,7 +648,7 @@ impl Http {
         session_id: &str,
         element_id: &str,
         name: &str,
-    ) -> SResult<String> {
+    ) -> SResult<Option<String>> {
         let v = minreq::get(format!(
             "{}/session/{}/element/{}/property/{}",
             self.url, session_id, element_id, name
@@ -659,7 +659,7 @@ impl Http {
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<Option<String>> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
     }
 
@@ -783,6 +783,7 @@ impl Http {
         element_id: &str,
         keys: &str,
     ) -> SResult<()> {
+        let keys = keys.trim();
         let v = minreq::post(format!(
             "{}/session/{}/element/{}/value",
             self.url, session_id, element_id,

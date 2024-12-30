@@ -6,14 +6,30 @@ fn get_attribute() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#checkbox")).unwrap();
 
-    assert_eq!("1", ele.get_attribute("value").unwrap());
+    assert_eq!("1", ele.get_attribute("value").unwrap().unwrap());
+
+    assert_eq!(None, ele.get_attribute("href").unwrap());
+    println!("[{:?}]", ele.get_attribute("href").unwrap());
 }
 #[test]
 fn get_property() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#checkbox")).unwrap();
 
-    assert_eq!("1", ele.get_attribute("value").unwrap());
+    assert_eq!("1", ele.get_property("value").unwrap().unwrap());
+    assert_eq!(None, ele.get_property("ok").unwrap());
+
+    let ele = driver.find_element(By::Id("href")).unwrap();
+    assert_eq!(
+        Some("file:///root/selenium/tests/2329".to_string()),
+        ele.get_property("href").unwrap()
+    );
+
+    let ele = driver.find_element(By::Id("src")).unwrap();
+    assert_eq!(
+        Some("file:///root/selenium/tests/common/1.png".to_string()),
+        ele.get_property("src").unwrap()
+    );
 }
 
 #[test]
@@ -89,11 +105,11 @@ fn clear() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#clear")).unwrap();
 
-    assert_eq!("测试clear", ele.get_property("value").unwrap());
+    assert_eq!("测试clear", ele.get_property("value").unwrap().unwrap());
 
     ele.clear().unwrap();
 
-    assert_eq!("", ele.get_property("value").unwrap());
+    assert_eq!("", ele.get_property("value").unwrap().unwrap());
 }
 
 #[test]
@@ -103,7 +119,7 @@ fn send_keys() {
     ele.clear().unwrap();
     ele.send_keys("demo测试").unwrap();
 
-    assert_eq!("demo测试", ele.get_property("value").unwrap());
+    assert_eq!("demo测试", ele.get_property("value").unwrap().unwrap());
 }
 
 #[test]

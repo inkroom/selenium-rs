@@ -86,7 +86,7 @@ fn dismiss_alert() {
 
     driver.dismiss_alert().unwrap();
 
-    assert_eq!("after alert", ele.get_property("innerHTML").unwrap());
+    assert_eq!("after alert", ele.get_property("innerHTML").unwrap().unwrap());
 }
 
 #[test]
@@ -97,13 +97,13 @@ fn confirm() {
 
     driver.accept_alert().unwrap();
 
-    assert_eq!("yes confirm", ele.get_property("innerHTML").unwrap());
+    assert_eq!("yes confirm", ele.get_property("innerHTML").unwrap().unwrap());
 
     ele.click().unwrap();
 
     driver.dismiss_alert().unwrap();
 
-    assert_eq!("no confirm", ele.get_property("innerHTML").unwrap());
+    assert_eq!("no confirm", ele.get_property("innerHTML").unwrap().unwrap());
 }
 
 #[test]
@@ -124,7 +124,7 @@ fn prompt() {
     driver.send_alert_text("text").unwrap();
     driver.accept_alert().unwrap();
 
-    assert_eq!("text", ele.get_property("innerHTML").unwrap());
+    assert_eq!("text", ele.get_property("innerHTML").unwrap().unwrap());
 }
 
 #[test]

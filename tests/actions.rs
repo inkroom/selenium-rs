@@ -12,7 +12,7 @@ fn click() {
         .click(None)
         .perform()
         .unwrap();
-    assert_eq!("已点击", ele.get_property("innerHTML").unwrap());
+    assert_eq!("已点击", ele.get_property("innerHTML").unwrap().unwrap());
 }
 
 #[test]
@@ -31,6 +31,7 @@ fn key() {
             .unwrap()
             .get_property("innerHTML")
             .unwrap()
+            .unwrap()
     );
     assert_eq!(
         "keyup=a 65",
@@ -38,6 +39,7 @@ fn key() {
             .find_element(By::Css("#demo2"))
             .unwrap()
             .get_property("innerHTML")
+            .unwrap()
             .unwrap()
     );
 }
@@ -59,6 +61,7 @@ fn pause() {
             .unwrap()
             .get_property("innerHTML")
             .unwrap()
+            .unwrap()
     );
     assert_eq!(
         "keyup=a 65",
@@ -66,6 +69,7 @@ fn pause() {
             .find_element(By::Css("#demo2"))
             .unwrap()
             .get_property("innerHTML")
+            .unwrap()
             .unwrap()
     );
 }
@@ -88,6 +92,7 @@ fn key_special() {
             .unwrap()
             .get_property("innerHTML")
             .unwrap()
+            .unwrap()
     );
     assert_eq!(
         "keyup=Enter 13",
@@ -95,6 +100,7 @@ fn key_special() {
             .find_element(By::Css("#demo2"))
             .unwrap()
             .get_property("innerHTML")
+            .unwrap()
             .unwrap()
     );
 
@@ -115,6 +121,7 @@ fn key_special() {
             .unwrap()
             .get_property("innerHTML")
             .unwrap()
+            .unwrap()
     );
     assert_eq!(
         "keyup=Control 17",
@@ -122,6 +129,7 @@ fn key_special() {
             .find_element(By::Css("#demo2"))
             .unwrap()
             .get_property("innerHTML")
+            .unwrap()
             .unwrap()
     );
 }

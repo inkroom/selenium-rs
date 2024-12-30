@@ -10,10 +10,6 @@ use crate::{
     By, Origin, SResult,
 };
 
-pub enum SendKey {
-    Text(String),
-}
-
 pub struct Element {
     pub(crate) http: Rc<Http>,
     pub(crate) session: Rc<Session>,
@@ -82,11 +78,11 @@ impl Element {
             .is_element_selected(&self.session.session_id, &self.id)
     }
 
-    pub fn get_attribute(&self, name: &str) -> SResult<String> {
+    pub fn get_attribute(&self, name: &str) -> SResult<Option<String>> {
         self.http
             .get_element_attribute(&self.session.session_id, &self.id, name)
     }
-    pub fn get_property(&self, name: &str) -> SResult<String> {
+    pub fn get_property(&self, name: &str) -> SResult<Option<String>> {
         self.http
             .get_element_property(&self.session.session_id, &self.id, name)
     }
