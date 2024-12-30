@@ -6,7 +6,12 @@ use crate::option::MultipleTypeMapValue;
 
 use super::{Browser, BrowserOption, Proxy};
 
-browser_option!(2, ChromeBuilder, Browser::Chrome, pub struct ChromeOption {});
+browser_option!(
+    2,
+    ChromeBuilder,
+    Browser::Chrome,
+    pub struct ChromeOption {}
+);
 
 impl ChromeBuilder {
     ///

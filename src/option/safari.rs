@@ -43,7 +43,7 @@ impl Display for SafariOption {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::option::{SafariOption, MultipleTypeMapValue};
+    use crate::option::{MultipleTypeMapValue, SafariOption};
 
     #[test]
     fn serde() {

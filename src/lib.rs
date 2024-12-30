@@ -19,9 +19,8 @@ impl Display for SError {
         match self {
             Self::Message(m) => f.write_fmt(format_args!("message:{m}")),
             Self::Driver(m) => f.write_fmt(format_args!("driver:{m}")),
-            Self::Http(status,m) => f.write_fmt(format_args!("http:status:{status}, reason:{m}")),
+            Self::Http(status, m) => f.write_fmt(format_args!("http:status:{status}, reason:{m}")),
             Self::Browser(m) => f.write_fmt(format_args!("browser:{m}")),
-
         }
     }
 }
