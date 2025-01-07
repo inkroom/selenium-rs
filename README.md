@@ -11,13 +11,13 @@
 
 ## browser driver
 
-目前只测试了firefox和chrome
+目前只测试了firefox、chrome、edge
 
 | Browser           | Component                        |
 | :---------------- | :------------------------------- |
 | Chrome            | [chromedriver(.exe)](https://googlechromelabs.github.io/chrome-for-testing/#stable)     |
 | Internet Explorer | [IEDriverServer.exe](https://www.selenium.dev/downloads/)    |
-| Edge              | [MicrosoftWebDriver.msi](http://go.microsoft.com/fwlink/?LinkId=619687)   |
+| Edge              | [MicrosoftWebDriver](https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/)   |
 | Firefox           | [geckodriver(.exe)](https://github.com/mozilla/geckodriver/releases/) |
 | Opera             | [operadriver(.exe)](https://github.com/operasoftware/operachromiumdriver/releases) |
 | Safari            | [safaridriver](https://developer.apple.com/library/prerelease/content/releasenotes/General/WhatsNewInSafari/Articles/Safari_10_0.html#//apple_ref/doc/uid/TP40014305-CH11-DontLinkElementID_28)                   |
@@ -57,7 +57,7 @@ d.get("https://github.com").unwrap();
 
 使用远程server
 ```rust
-let option = FirefoxBuilder::new().host("127.0.0.1").port(3824).build();
+let option = FirefoxBuilder::new().url("http://127.0.0.1:3824").build();
 let d = Driver::new(option).unwrap();
 d.get("https://github.com").unwrap();
 ```
@@ -77,10 +77,10 @@ driver.find_element(By::Css("#input")).unwrap().send_keys("input").unwrap()
 更复杂的操作，比如组合键
 ```rust
 driver.actions()
-      .key_down_special(Key::CONTROL)
+      .key_down_special(Key::Control)
       .key_down("e")
       .key_up("e")
-      .key_up_special(Key::CONTROL)
+      .key_up_special(Key::Control)
       .perform()
       .unwrap();
 ```

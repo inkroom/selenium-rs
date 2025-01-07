@@ -47,7 +47,7 @@ macro_rules! browser_option{
             )*
         }
 
-        impl BrowserOption for $struct_name {
+        impl $crate::option::BrowserOption for $struct_name {
             fn url(&self) -> Option<&str> {
                 self.url.as_deref()
             }
@@ -62,6 +62,15 @@ macro_rules! browser_option{
 
             fn browser(&self)->$crate::option::Browser{
                 $browser
+            }
+        }
+
+        impl Display for $struct_name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_fmt(format_args!(
+                    "{}",
+                    serde_json::to_string(self).map_err(|f| std::fmt::Error)?
+                ))
             }
         }
 
@@ -83,7 +92,7 @@ macro_rules! browser_option{
                 self
             }
             /// 代理
-            pub fn proxy(mut self, proxy:Proxy) -> Self {
+            pub fn proxy(mut self, proxy:$crate::option::Proxy) -> Self {
                 self.proxy = Some(proxy);
                 self
             }
@@ -177,6 +186,7 @@ pub enum Browser {
     Firefox,
     Chrome,
     Safari,
+    Edge,
 }
 
 impl Display for Browser {
@@ -185,6 +195,7 @@ impl Display for Browser {
             Browser::Firefox => f.write_str("firefox"),
             Browser::Chrome => f.write_str("chrome"),
             Browser::Safari => f.write_str("safari"),
+            Browser::Edge => f.write_str("edge"),
         }
     }
 }
@@ -223,7 +234,7 @@ impl Serialize for MultipleTypeMapValue {
     }
 }
 
-pub trait BrowserOption: Display {
+pub trait BrowserOption: Serialize + Display {
     ///
     /// 如果需要支持https需要开启https features
     ///
@@ -468,6 +479,7 @@ impl Proxy {
 mod chrome;
 mod firefox;
 mod safari;
+mod edge;
 
 pub use firefox::FirefoxBuilder;
 pub use firefox::FirefoxOption;
@@ -477,3 +489,6 @@ pub use chrome::ChromeOption;
 
 pub use safari::SafariBuilder;
 pub use safari::SafariOption;
+
+pub use edge::EdgeBuilder;
+pub use edge::EdgeOption;

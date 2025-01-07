@@ -30,15 +30,6 @@ impl Serialize for SafariOption {
     }
 }
 
-impl Display for SafariOption {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}",
-            serde_json::to_string(self).map_err(|f| std::fmt::Error)?
-        ))
-    }
-}
-
 // #[cfg(test)]
 mod tests {
     use std::collections::HashMap;

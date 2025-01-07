@@ -17,7 +17,7 @@ impl FirefoxBuilder {
     ///
     /// 设置为headless模式
     ///
-    pub fn head_leass(self) -> Self {
+    pub fn head_less(self) -> Self {
         self.add_argument("-headless")
     }
     ///
@@ -68,14 +68,6 @@ impl Serialize for FirefoxOption {
     }
 }
 
-impl Display for FirefoxOption {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}",
-            serde_json::to_string(self).map_err(|f| std::fmt::Error)?
-        ))
-    }
-}
 
 #[cfg(test)]
 mod tests {

@@ -17,14 +17,14 @@ impl ChromeBuilder {
     ///
     /// 设置为headless模式
     ///
-    pub fn head_leass(self) -> Self {
+    pub fn head_less(self) -> Self {
         self.add_argument("--headless=new")
     }
     ///
     /// 设置为隐私模式
     ///
     pub fn private(self) -> Self {
-        self.add_argument("--private-window")
+        self.add_argument("--incognito")
     }
 }
 impl Serialize for ChromeOption {
@@ -62,14 +62,5 @@ impl Serialize for ChromeOption {
         }
 
         s.end()
-    }
-}
-
-impl Display for ChromeOption {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}",
-            serde_json::to_string(self).map_err(|f| std::fmt::Error)?
-        ))
     }
 }

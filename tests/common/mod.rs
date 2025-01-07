@@ -2,14 +2,14 @@ use std::time::Duration;
 
 use selenium::{
     driver::Driver,
-    option::{Browser, ChromeBuilder, FirefoxBuilder, Proxy, SafariBuilder},
+    option::{Browser, ChromeBuilder, EdgeBuilder, FirefoxBuilder, Proxy, SafariBuilder},
     SError,
 };
 
 fn use_firefox() -> Driver {
     Driver::new(
         if std::env::var("HEADLESS").is_ok() {
-            FirefoxBuilder::new().head_leass()
+            FirefoxBuilder::new().head_less()
         } else {
             FirefoxBuilder::new()
         }
@@ -42,12 +42,13 @@ fn use_chrome() -> Driver {
             ChromeBuilder::new()
                 .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
                 .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
-                .head_leass()
+                .head_less()
         } else {
             ChromeBuilder::new()
                 .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
                 .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         }
+        .private()
         .add_argument("--no-zygote")
         .add_argument("--disable-gpu")
         .add_argument(format!("--remote-debugging-port={}", get_available_port()).as_str())
@@ -70,6 +71,24 @@ fn use_safari() -> Driver {
     v
 }
 
+fn use_edge() -> Driver {
+    Driver::new(
+        if std::env::var("HEADLESS").is_ok() {
+            EdgeBuilder::new()
+                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
+                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
+                .head_less()
+        } else {
+            EdgeBuilder::new()
+                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
+                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
+        }
+        .private()
+        .build(),
+    )
+    .unwrap()
+}
+
 pub fn new_driver() -> Driver {
     let d = match std::env::var("BROWSER")
         .unwrap_or("firefox".to_string())
@@ -78,6 +97,7 @@ pub fn new_driver() -> Driver {
         "firefox" => use_firefox(),
         "chrome" => use_chrome(),
         "safari" => use_safari(),
+        "edge" => use_edge(),
         _ => use_firefox(),
     };
     d.get(

@@ -59,6 +59,7 @@ impl DriverProcess {
             Browser::Firefox => s.arg("--port").arg(port.to_string()),
             Browser::Chrome => s.arg(format!("--port={port}")),
             Browser::Safari => s.arg("--port").arg(port.to_string()),
+            Browser::Edge => s.arg(format!("--port={port}")),
         };
         let mut s = s
             .envs(env)

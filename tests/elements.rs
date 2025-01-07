@@ -21,13 +21,19 @@ fn get_property() {
 
     let ele = driver.find_element(By::Id("href")).unwrap();
     assert_eq!(
-        Some("file:///root/selenium/tests/2329".to_string()),
+        Some(format!(
+            "file://{}/tests/2329",
+            std::env::current_dir().unwrap().display()
+        )),
         ele.get_property("href").unwrap()
     );
 
     let ele = driver.find_element(By::Id("src")).unwrap();
     assert_eq!(
-        Some("file:///root/selenium/tests/common/1.png".to_string()),
+        Some(format!(
+            "file://{}/tests/common/1.png",
+            std::env::current_dir().unwrap().display()
+        )),
         ele.get_property("src").unwrap()
     );
 }
@@ -38,13 +44,13 @@ fn get_css() {
     let ele = driver.find_element(By::Css("#label")).unwrap();
 
     match driver.browser() {
-        selenium::option::Browser::Firefox => {
-            assert_eq!("rgb(255, 0, 0)", ele.get_css_value("color").unwrap())
-        }
         selenium::option::Browser::Chrome => {
             assert_eq!("rgba(255, 0, 0, 1)", ele.get_css_value("color").unwrap())
         }
-        selenium::option::Browser::Safari => {
+        selenium::option::Browser::Edge => {
+            assert_eq!("rgba(255, 0, 0, 1)", ele.get_css_value("color").unwrap())
+        }
+        _ => {
             assert_eq!("rgb(255, 0, 0)", ele.get_css_value("color").unwrap())
         }
     }
