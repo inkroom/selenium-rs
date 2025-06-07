@@ -1,0 +1,17 @@
+{
+	"name": "selenium-rs",
+	"image":"inkbox/rust:1.85.0",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"vadimcn.vscode-lldb",
+				"swellaby.vscode-rust-test-adapter"
+			]
+		}
+	},
+	"containerEnv":{"HEADLESS":"true"},
+	"onCreateCommand":
+		"(test -e geckodriver || ( wget https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux32.tar.gz && tar -xf geckodriver-v0.35.0-linux32.tar.gz && rm -rf geckodriver-v0.35.0-linux32.tar.gz ) ) && apt update -y && apt install -y firefox-esr fonts-wqy-microhei && cargo clean && cargo build"
+	
+}
