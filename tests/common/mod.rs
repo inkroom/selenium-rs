@@ -13,6 +13,7 @@ fn use_firefox() -> Driver {
         } else {
             FirefoxBuilder::new()
         }
+        .timeout(1000)
         .driver(
             format!(
                 "{}/geckodriver",
@@ -49,6 +50,7 @@ fn use_chrome() -> Driver {
                 .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         }
         .private()
+        .timeout(1000)
         .add_argument("--no-zygote")
         .add_argument("--disable-gpu")
         .add_argument(format!("--remote-debugging-port={}", get_available_port()).as_str())
@@ -63,7 +65,13 @@ fn use_chrome() -> Driver {
 fn use_safari() -> Driver {
     // 需要睡眠等待driver处理
     sleep(3);
-    let v = Driver::new(SafariBuilder::new().url("http://127.0.0.1:48273").build()).unwrap();
+    let v = Driver::new(
+        SafariBuilder::new()
+            .url("http://127.0.0.1:48273")
+            .timeout(1000)
+            .build(),
+    )
+    .unwrap();
     v.set_timeouts(selenium::TimeoutType::Implicit(100))
         .unwrap();
     v.set_timeouts(selenium::TimeoutType::PageLoad(1500))
@@ -75,11 +83,13 @@ fn use_edge() -> Driver {
     Driver::new(
         if std::env::var("HEADLESS").is_ok() {
             EdgeBuilder::new()
+                .timeout(1000)
                 .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
                 .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
                 .head_less()
         } else {
             EdgeBuilder::new()
+                .timeout(1000)
                 .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
                 .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         }

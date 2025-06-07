@@ -137,14 +137,22 @@ impl Http {
         }
     }
 
+    pub fn req(&self, method: minreq::Method, url: String) -> minreq::Request {
+        let mut r =
+            minreq::Request::new(method, url).with_header("Content-Type", "application/json");
+        if self.timeout != 0 {
+            r = r.with_timeout(self.timeout)
+        }
+        r
+    }
+
     pub(crate) fn new_session<T>(&self, cap: Capability<T>) -> SResult<Session>
     where
         T: BrowserOption,
     {
-        let v = minreq::post(format!("{}/session", self.url))
-            .with_timeout(self.timeout)
+        let v = self
+            .req(minreq::Method::Post, format!("{}/session", self.url))
             .with_body(format!("{cap}"))
-            .with_header("Content-Type", "application/json")
             .send()?;
 
         if v.status_code == 200 {
@@ -157,16 +165,22 @@ impl Http {
     }
 
     pub(crate) fn delete_session(&self, session_id: &str) -> SResult<()> {
-        let _v = minreq::delete(format!("{}/session/{}", self.url, session_id))
+        let _v = self
+            .req(
+                minreq::Method::Delete,
+                format!("{}/session/{}", self.url, session_id),
+            )
             .with_timeout(self.timeout)
             .send()?;
         Ok(())
     }
 
     pub(crate) fn navigate(&self, session_id: &str, url: &str) -> SResult<()> {
-        let _v = minreq::post(format!("{}/session/{}/url", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let _v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/url", self.url, session_id),
+            )
             .with_body(format!(r#"{{"url":"{url}"}}"#))
             .send()?;
 
@@ -174,9 +188,11 @@ impl Http {
     }
 
     pub(crate) fn get_current_url(&self, session_id: &str) -> SResult<String> {
-        let v = minreq::get(format!("{}/session/{}/url", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/url", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -187,9 +203,11 @@ impl Http {
     }
 
     pub(crate) fn back(&self, session_id: &str) -> SResult<()> {
-        let v = minreq::post(format!("{}/session/{}/back", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/back", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -199,9 +217,11 @@ impl Http {
     }
 
     pub(crate) fn forward(&self, session_id: &str) -> SResult<()> {
-        let v = minreq::post(format!("{}/session/{}/forward", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/forward", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -211,9 +231,11 @@ impl Http {
     }
 
     pub(crate) fn refresh(&self, session_id: &str) -> SResult<()> {
-        let v = minreq::post(format!("{}/session/{}/refresh", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/refresh", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -223,9 +245,11 @@ impl Http {
     }
 
     pub(crate) fn get_title(&self, session_id: &str) -> SResult<String> {
-        let v = minreq::get(format!("{}/session/{}/title", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/title", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -239,9 +263,11 @@ impl Http {
 /// Contexts
 impl Http {
     pub(crate) fn get_window_handle(&self, session_id: &str) -> SResult<String> {
-        let v = minreq::get(format!("{}/session/{}/window", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/window", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -254,9 +280,11 @@ impl Http {
     ///
     /// Returns window handles
     pub(crate) fn close_window(&self, session_id: &str) -> SResult<Vec<String>> {
-        let v = minreq::delete(format!("{}/session/{}/window", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Delete,
+                format!("{}/session/{}/window", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -268,9 +296,11 @@ impl Http {
     }
 
     pub(crate) fn switch_to_window(&self, session_id: &str, handle: &str) -> SResult<()> {
-        let v = minreq::delete(format!("{}/session/{}/window", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Delete,
+                format!("{}/session/{}/window", self.url, session_id),
+            )
             .with_body(format!(r#"{{"handle":"{handle}","name":"{handle}"}}"#))
             .send()?;
 
@@ -282,13 +312,12 @@ impl Http {
     }
 
     pub(crate) fn get_window_handles(&self, session_id: &str) -> SResult<Vec<String>> {
-        let v = minreq::delete(format!(
-            "{}/session/{}/window/handles",
-            self.url, session_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Delete,
+                format!("{}/session/{}/window/handles", self.url, session_id),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -300,9 +329,11 @@ impl Http {
     ///
     /// `type`: "tab" or "window"
     pub(crate) fn new_window(&self, session_id: &str, window_type: &str) -> SResult<String> {
-        let v = minreq::post(format!("{}/session/{}/window/new", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/window/new", self.url, session_id),
+            )
             .with_body(format!(r#"{{"type":"{window_type}"}}"#))
             .send()?;
 
@@ -321,9 +352,10 @@ impl Http {
     }
 
     pub(crate) fn switch_to_frame(&self, session_id: &str, id: SwitchToFrame) -> SResult<()> {
-        let mut req = minreq::post(format!("{}/session/{}/frame", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json");
+        let mut req = self.req(
+            minreq::Method::Post,
+            format!("{}/session/{}/frame", self.url, session_id),
+        );
         match id {
             SwitchToFrame::Null => {
                 req = req.with_body(r#"{"id":null}"#.to_string());
@@ -344,9 +376,10 @@ impl Http {
     }
 
     pub(crate) fn switch_to_parent_frame(&self, session_id: &str) -> SResult<()> {
-        let req = minreq::post(format!("{}/session/{}/frame", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json");
+        let req = self.req(
+            minreq::Method::Post,
+            format!("{}/session/{}/frame", self.url, session_id),
+        );
 
         let v = req.send()?;
         if v.status_code != 200 {
@@ -357,9 +390,11 @@ impl Http {
     }
 
     pub(crate) fn get_window_rect(&self, session_id: &str) -> SResult<Rect> {
-        let v = minreq::get(format!("{}/session/{}/window/rect", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/window/rect", self.url, session_id),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -371,9 +406,11 @@ impl Http {
     }
 
     pub(crate) fn set_window_rect(&self, session_id: &str, rect: Rect) -> SResult<Rect> {
-        let v = minreq::post(format!("{}/session/{}/window/rect", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/window/rect", self.url, session_id),
+            )
             .with_body(serde_json::to_string(&rect)?)
             .send()?;
 
@@ -386,13 +423,12 @@ impl Http {
     }
 
     pub(crate) fn maximize_window(&self, session_id: &str) -> SResult<Rect> {
-        let v = minreq::post(format!(
-            "{}/session/{}/window/maximize",
-            self.url, session_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/window/maximize", self.url, session_id),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -403,13 +439,12 @@ impl Http {
     }
 
     pub(crate) fn minimize_window(&self, session_id: &str) -> SResult<Rect> {
-        let v = minreq::post(format!(
-            "{}/session/{}/window/minimize",
-            self.url, session_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/window/minimize", self.url, session_id),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -420,13 +455,12 @@ impl Http {
     }
 
     pub(crate) fn fullscreen_window(&self, session_id: &str) -> SResult<Rect> {
-        let v = minreq::post(format!(
-            "{}/session/{}/window/fullscreen",
-            self.url, session_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/window/fullscreen", self.url, session_id),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -437,9 +471,11 @@ impl Http {
     }
 
     pub(crate) fn find_element(&self, session_id: &str, by: By<'_>) -> SResult<(String, String)> {
-        let v = minreq::post(format!("{}/session/{}/element", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/element", self.url, session_id),
+            )
             .with_body(serde_json::to_string(&by)?)
             .send()?;
 
@@ -459,9 +495,11 @@ impl Http {
         session_id: &str,
         by: By<'_>,
     ) -> SResult<Vec<(String, String)>> {
-        let v = minreq::post(format!("{}/session/{}/elements", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/elements", self.url, session_id),
+            )
             .with_body(serde_json::to_string(&by)?)
             .send()?;
 
@@ -487,14 +525,16 @@ impl Http {
         element_id: &str,
         by: By<'_>,
     ) -> SResult<(String, String)> {
-        let v = minreq::post(format!(
-            "{}/session/{}/element/{}/element",
-            self.url, session_id, element_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body(serde_json::to_string(&by)?)
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!(
+                    "{}/session/{}/element/{}/element",
+                    self.url, session_id, element_id
+                ),
+            )
+            .with_body(serde_json::to_string(&by)?)
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -513,14 +553,16 @@ impl Http {
         element_id: &str,
         by: By<'_>,
     ) -> SResult<Vec<(String, String)>> {
-        let v = minreq::post(format!(
-            "{}/session/{}/element/{}/elements",
-            self.url, session_id, element_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body(serde_json::to_string(&by)?)
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!(
+                    "{}/session/{}/element/{}/elements",
+                    self.url, session_id, element_id
+                ),
+            )
+            .with_body(serde_json::to_string(&by)?)
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -539,13 +581,12 @@ impl Http {
     }
 
     pub(crate) fn get_active_element(&self, session_id: &str) -> SResult<(String, String)> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/active",
-            self.url, session_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/element/active", self.url, session_id),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -563,13 +604,15 @@ impl Http {
         session_id: &str,
         element_id: &str,
     ) -> SResult<(String, String)> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/shadow",
-            self.url, session_id, element_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/shadow",
+                    self.url, session_id, element_id
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -588,14 +631,16 @@ impl Http {
         shadow_id: &str,
         by: By<'_>,
     ) -> SResult<(String, String)> {
-        let v = minreq::post(format!(
-            "{}/session/{}/shadow/{}/element",
-            self.url, session_id, shadow_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body(serde_json::to_string(&by)?)
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!(
+                    "{}/session/{}/shadow/{}/element",
+                    self.url, session_id, shadow_id
+                ),
+            )
+            .with_body(serde_json::to_string(&by)?)
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -614,14 +659,16 @@ impl Http {
         shadow_id: &str,
         by: By<'_>,
     ) -> SResult<Vec<(String, String)>> {
-        let v = minreq::post(format!(
-            "{}/session/{}/shadow/{}/elements",
-            self.url, session_id, shadow_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body(serde_json::to_string(&by)?)
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!(
+                    "{}/session/{}/shadow/{}/elements",
+                    self.url, session_id, shadow_id
+                ),
+            )
+            .with_body(serde_json::to_string(&by)?)
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -640,13 +687,15 @@ impl Http {
     }
 
     pub(crate) fn is_element_selected(&self, session_id: &str, element_id: &str) -> SResult<bool> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/selected",
-            self.url, session_id, element_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/selected",
+                    self.url, session_id, element_id
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -661,13 +710,15 @@ impl Http {
         element_id: &str,
         name: &str,
     ) -> SResult<Option<String>> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/attribute/{}",
-            self.url, session_id, element_id, name
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/attribute/{}",
+                    self.url, session_id, element_id, name
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -682,13 +733,15 @@ impl Http {
         element_id: &str,
         name: &str,
     ) -> SResult<Option<String>> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/property/{}",
-            self.url, session_id, element_id, name
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/property/{}",
+                    self.url, session_id, element_id, name
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -703,13 +756,15 @@ impl Http {
         element_id: &str,
         name: &str,
     ) -> SResult<String> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/css/{}",
-            self.url, session_id, element_id, name
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/css/{}",
+                    self.url, session_id, element_id, name
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -719,13 +774,15 @@ impl Http {
     }
 
     pub(crate) fn get_element_text(&self, session_id: &str, element_id: &str) -> SResult<String> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/text",
-            self.url, session_id, element_id,
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/text",
+                    self.url, session_id, element_id,
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -739,13 +796,15 @@ impl Http {
         session_id: &str,
         element_id: &str,
     ) -> SResult<String> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/name",
-            self.url, session_id, element_id,
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/name",
+                    self.url, session_id, element_id,
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -755,13 +814,15 @@ impl Http {
     }
 
     pub(crate) fn get_element_rect(&self, session_id: &str, element_id: &str) -> SResult<Rect> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/rect",
-            self.url, session_id, element_id,
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/rect",
+                    self.url, session_id, element_id,
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -771,13 +832,15 @@ impl Http {
     }
 
     pub(crate) fn is_element_enabled(&self, session_id: &str, element_id: &str) -> SResult<bool> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/enabled",
-            self.url, session_id, element_id,
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/enabled",
+                    self.url, session_id, element_id,
+                ),
+            )
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -787,14 +850,16 @@ impl Http {
     }
 
     pub(crate) fn element_click(&self, session_id: &str, element_id: &str) -> SResult<()> {
-        let v = minreq::post(format!(
-            "{}/session/{}/element/{}/click",
-            self.url, session_id, element_id,
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body("{}")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!(
+                    "{}/session/{}/element/{}/click",
+                    self.url, session_id, element_id,
+                ),
+            )
+            .with_body("{}")
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -803,14 +868,16 @@ impl Http {
     }
 
     pub(crate) fn element_clear(&self, session_id: &str, element_id: &str) -> SResult<()> {
-        let v = minreq::post(format!(
-            "{}/session/{}/element/{}/clear",
-            self.url, session_id, element_id,
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body("{}")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!(
+                    "{}/session/{}/element/{}/clear",
+                    self.url, session_id, element_id,
+                ),
+            )
+            .with_body("{}")
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -825,20 +892,22 @@ impl Http {
         keys: &str,
     ) -> SResult<()> {
         let keys = keys.trim();
-        let v = minreq::post(format!(
-            "{}/session/{}/element/{}/value",
-            self.url, session_id, element_id,
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body(format!(
-            r#"{{"text":"{keys}","value":[{}]}}"#,
-            keys.chars()
-                .map(|f| format!(r#""{}""#, f))
-                .collect::<Vec<String>>()
-                .join(",")
-        ))
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!(
+                    "{}/session/{}/element/{}/value",
+                    self.url, session_id, element_id,
+                ),
+            )
+            .with_body(format!(
+                r#"{{"text":"{keys}","value":[{}]}}"#,
+                keys.chars()
+                    .map(|f| format!(r#""{}""#, f))
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ))
+            .send()?;
 
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -847,9 +916,11 @@ impl Http {
     }
 
     pub(crate) fn get_page_source(&self, session_id: &str) -> SResult<String> {
-        let v = minreq::get(format!("{}/session/{}/source", self.url, session_id,))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/source", self.url, session_id,),
+            )
             .send()?;
 
         if v.status_code != 200 {
@@ -875,9 +946,11 @@ impl Http {
             args: args.iter().map(|f| f.to_string()).collect(),
         };
 
-        let v = minreq::post(format!("{}/session/{}/execute/sync", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/execute/sync", self.url, session_id),
+            )
             .with_body(serde_json::to_string(&t)?)
             .send()?;
 
@@ -889,9 +962,10 @@ impl Http {
     }
 
     pub(crate) fn set_timeouts(&self, session_id: &str, timeout: TimeoutType) -> SResult<()> {
-        let mut req = minreq::post(format!("{}/session/{}/timeouts", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json");
+        let mut req = self.req(
+            minreq::Method::Post,
+            format!("{}/session/{}/timeouts", self.url, session_id),
+        );
         // req = match timeout {
         //     TimeoutType::Script(t) => req.with_body(format!(r#"{{"type":"script","ms":{t}}}"#)),
         //     TimeoutType::PageLoad(t) => req.with_body(format!(r#"{{"type":"pageLoad","ms":{t}}}"#)),
@@ -911,9 +985,10 @@ impl Http {
     }
 
     pub(crate) fn get_timouts(&self, session_id: &str) -> SResult<Vec<TimeoutType>> {
-        let req = minreq::get(format!("{}/session/{}/timeouts", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json");
+        let req = self.req(
+            minreq::Method::Get,
+            format!("{}/session/{}/timeouts", self.url, session_id),
+        );
 
         let v = req.send()?;
 
@@ -946,9 +1021,11 @@ impl Http {
         let mut map = HashMap::new();
         map.insert("actions", req);
         let j = serde_json::to_string(&map)?;
-        let v = minreq::post(format!("{}/session/{}/actions", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/actions", self.url, session_id),
+            )
             .with_body(j)
             .send()?;
 
@@ -959,9 +1036,11 @@ impl Http {
     }
 
     pub(crate) fn dismiss_alert(&self, session_id: &str) -> SResult<()> {
-        let v = minreq::post(format!("{}/session/{}/alert/dismiss", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/alert/dismiss", self.url, session_id),
+            )
             .with_body("{}")
             .send()?;
         if v.status_code != 200 {
@@ -971,9 +1050,11 @@ impl Http {
     }
 
     pub(crate) fn accept_alert(&self, session_id: &str) -> SResult<()> {
-        let v = minreq::post(format!("{}/session/{}/alert/accept", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/alert/accept", self.url, session_id),
+            )
             .with_body("{}")
             .send()?;
         if v.status_code != 200 {
@@ -983,9 +1064,11 @@ impl Http {
     }
 
     pub(crate) fn get_alert_text(&self, session_id: &str) -> SResult<String> {
-        let v = minreq::get(format!("{}/session/{}/alert/text", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/alert/text", self.url, session_id),
+            )
             .send()?;
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
@@ -995,9 +1078,11 @@ impl Http {
     }
 
     pub(crate) fn send_alert_text(&self, session_id: &str, text: &str) -> SResult<()> {
-        let v = minreq::post(format!("{}/session/{}/alert/text", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/alert/text", self.url, session_id),
+            )
             .with_body(format!(r#"{{"text":"{text}"}}"#))
             .send()?;
         if v.status_code != 200 {
@@ -1006,9 +1091,11 @@ impl Http {
         Ok(())
     }
     pub(crate) fn take_screenshot(&self, session_id: &str) -> SResult<Vec<u8>> {
-        let v = minreq::get(format!("{}/session/{}/screenshot", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!("{}/session/{}/screenshot", self.url, session_id),
+            )
             .with_body("{}")
             .send()?;
         if v.status_code != 200 {
@@ -1022,14 +1109,16 @@ impl Http {
         session_id: &str,
         element_id: &str,
     ) -> SResult<Vec<u8>> {
-        let v = minreq::get(format!(
-            "{}/session/{}/element/{}/screenshot",
-            self.url, session_id, element_id
-        ))
-        .with_timeout(self.timeout)
-        .with_header("Content-Type", "application/json")
-        .with_body("{}")
-        .send()?;
+        let v = self
+            .req(
+                minreq::Method::Get,
+                format!(
+                    "{}/session/{}/element/{}/screenshot",
+                    self.url, session_id, element_id
+                ),
+            )
+            .with_body("{}")
+            .send()?;
         if v.status_code != 200 {
             return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
         }
@@ -1051,9 +1140,11 @@ impl Http {
             args: vec![element],
         };
 
-        let v = minreq::post(format!("{}/session/{}/execute/sync", self.url, session_id))
-            .with_timeout(self.timeout)
-            .with_header("Content-Type", "application/json")
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/execute/sync", self.url, session_id),
+            )
             .with_body(serde_json::to_string(&t)?)
             .send()?;
 
