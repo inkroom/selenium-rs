@@ -9,32 +9,21 @@ fn main() -> Result<(), tinyget::Error> {
     }
     println!("file postion : {is_displayed_out}");
 
-    if let Ok(f) = std::env::var("MIRROR_JS_FILE") {
-        std::fs::copy(f.as_str(),is_displayed_out.as_str())?;
-        return Ok(());
-    }
-    let resp = tinyget::get("https://github.com/SeleniumHQ/selenium/raw/cc5ca35d366268db87f1e510c3813114471740db/rb/lib/selenium/webdriver/atoms/isDisplayed.js")
-    .send()?;
+    let bytes = if let Ok(f) = std::env::var("MIRROR_JS_FILE") {
+        std::fs::read_to_string(f)?
+    } else {
+        tinyget::get("https://github.com/SeleniumHQ/selenium/raw/cc5ca35d366268db87f1e510c3813114471740db/rb/lib/selenium/webdriver/atoms/isDisplayed.js")
+            .send().expect("download from github fail").as_str().expect("download from github fail").to_string()
+    };
 
-    let bytes = resp.as_str().unwrap();
-    if let Some(len) = resp.headers.get("content-length") {
-        if bytes.len()
-            == len
-                .parse::<usize>()
-                .map_err(|e| tinyget::Error::Other("download from github error"))?
-        {
-            std::fs::write(
-                is_displayed_out,
-                format!(
-                    r####"pub const IS_DISPLAY_SCRIPT:&str=r###"{}"###;"####,
-                    bytes
-                ),
-            )
-            .unwrap();
-        } else {
-            return Err(tinyget::Error::Other("download from github error"));
-        }
-    }
+    std::fs::write(
+        is_displayed_out,
+        format!(
+            r####"pub const IS_DISPLAY_SCRIPT:&str=r###"{}"###;"####,
+            bytes
+        ),
+    )
+    .unwrap();
 
     Ok(())
 }

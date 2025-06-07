@@ -31,6 +31,10 @@
 cargo add selenium --git https://github.com/inkroom/selenium-rs
 ```
 
+#### 镜像
+
+selenium会从github上下载一个[js文件](https://github.com/SeleniumHQ/selenium/raw/cc5ca35d366268db87f1e510c3813114471740db/rb/lib/selenium/webdriver/atoms/isDisplayed.js)，如果遇到`download from github fail`提示，可以手动下载后，使用 **MIRROR_JS_FILE**环境变量指明文件的绝对路径
+
 ### 启动
 使用本地driver
 
