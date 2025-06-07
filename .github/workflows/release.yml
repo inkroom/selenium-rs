@@ -5,7 +5,7 @@ on:
     branches:
       - master
 jobs:
-  test:
+  edge:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -18,48 +18,20 @@ jobs:
           path: selenium
           fetch-depth: 0
           repository: SeleniumHQ/selenium
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.83.0
-      - name: Ready Firefox
-        run: |
-          sudo apt update -y && sudo apt install firefox firefox-locale-zh-hans fonts-wqy-zenhei  && wget https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux64.tar.gz && tar -zxf geckodriver-v0.35.0-linux64.tar.gz
-          chmod +x geckodriver
-      - name: Test Firefox
-        env:
-          HEADLESS: true
-        run: |
-          cargo test
-      - name: Ready Chrome
-        id: chrome
-        run: |
-          cd selenium/rust
-          sudo apt update -y 
-          sudo apt install -y libgtk-3-dev
-          BROWSER_DRIVER=$(cargo run -- --browser chrome --output json | jq --raw-output '.result.driver_path')
-          BROWSER_BINARY=$(cargo run -- --browser chrome --output json | jq --raw-output '.result.browser_path')
-          echo $BROWSER_DRIVER
-          echo $BROWSER_BINARY
-          echo "BROWSER_DRIVER=$BROWSER_DRIVER" >> $GITHUB_OUTPUT
-          echo "BROWSER_BINARY=$BROWSER_BINARY" >> $GITHUB_OUTPUT
-
-      - name: Test Chrome
-        env:
-          BROWSER: chrome
-          HEADLESS: true
-          BROWSER_BINARY: ${{ steps.chrome.outputs.BROWSER_BINARY }}
-          BROWSER_DRIVER: ${{ steps.chrome.outputs.BROWSER_DRIVER }}
-          RUST_TEST_THREADS: 1
-        run: |
-          cargo test -j 1
+          toolchain: 1.85.0
       - name: Ready Edge
         id: edge
         run: |
           cd selenium/rust
-          sudo apt update -y 
+          sudo apt update -y
           sudo apt install -y libgtk-3-dev
-          BROWSER_DRIVER=$(cargo run -- --browser edge --output json | jq --raw-output '.result.driver_path')
-          BROWSER_BINARY=$(cargo run -- --browser edge --output json | jq --raw-output '.result.browser_path')
+          JSON=$(cargo run -- --browser edge --output json)
+          echo $JSON
+          BROWSER_DRIVER=$(echo $JSON | jq --raw-output '.result.driver_path')
+          BROWSER_BINARY=$(echo $JSON | jq --raw-output '.result.browser_path')
           echo $BROWSER_DRIVER
           echo $BROWSER_BINARY
           echo "BROWSER_DRIVER=$BROWSER_DRIVER" >> $GITHUB_OUTPUT
@@ -73,4 +45,76 @@ jobs:
           BROWSER_DRIVER: ${{ steps.edge.outputs.BROWSER_DRIVER }}
           RUST_TEST_THREADS: 1
         run: |
-          cargo test -j 1
+          cargo test -j 1 -- --test-threads=1
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: debian:stable-20231218-slim
+    steps:
+      - name: Runtime
+        run: |
+           apt update -y && apt upgrade -y && apt install -y git curl firefox-esr wget unzip sudo make gcc g++ libssl-dev pkg-config cmake apt-utils locales
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+         fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: selenium
+          fetch-depth: 0
+          repository: SeleniumHQ/selenium
+      - name: Ready Firefox
+        run: |
+          apt update -y && apt upgrade -y && apt install -y git curl firefox-esr wget unzip sudo make gcc g++ libssl-dev pkg-config cmake apt-utils locales
+          wget -q https://github.com/mozilla/geckodriver/releases/download/v0.35.0/geckodriver-v0.35.0-linux32.tar.gz && tar -xf geckodriver-v0.35.0-linux32.tar.gz && rm -rf geckodriver-v0.35.0-linux32.tar.gz
+          chmod +x geckodriver
+          mkdir -p /usr/share/fonts/source-han-sans/ && mkdir -p /usr/share/fonts/source-han-serif/ && wget -q https://github.com/adobe-fonts/source-han-serif/raw/refs/heads/release/SubsetOTF/SourceHanSerifCN.zip && unzip SourceHanSerifCN.zip -d ff && cp ff/*.otf /usr/share/fonts/source-han-serif/ && rm -rf ff SourceHanSerifCN.zip \
+          && wget -q -o /usr/share/fonts/source-han-sans/SourceHanSansCN-Bold.otf https://github.com/adobe-fonts/source-han-sans/raw/refs/heads/release/SubsetOTF/CN/SourceHanSansCN-Bold.otf \
+          && wget -q -o /usr/share/fonts/source-han-sans/SourceHanSansCN-ExtraLight.otf https://github.com/adobe-fonts/source-han-sans/raw/refs/heads/release/SubsetOTF/CN/SourceHanSansCN-ExtraLight.otf \
+          && wget -q -o /usr/share/fonts/source-han-sans/SourceHanSansCN-Heavy.otf https://github.com/adobe-fonts/source-han-sans/raw/refs/heads/release/SubsetOTF/CN/SourceHanSansCN-Heavy.otf \
+          && wget -q -o /usr/share/fonts/source-han-sans/SourceHanSansCN-Light.otf https://github.com/adobe-fonts/source-han-sans/raw/refs/heads/release/SubsetOTF/CN/SourceHanSansCN-Light.otf \
+          && wget -q -o /usr/share/fonts/source-han-sans/SourceHanSansCN-Medium.otf https://github.com/adobe-fonts/source-han-sans/raw/refs/heads/release/SubsetOTF/CN/SourceHanSansCN-Medium.otf \
+          && wget -q -o /usr/share/fonts/source-han-sans/SourceHanSansCN-Normal.otf https://github.com/adobe-fonts/source-han-sans/raw/refs/heads/release/SubsetOTF/CN/SourceHanSansCN-Normal.otf \
+          && wget -q -o /usr/share/fonts/source-han-sans/SourceHanSansCN-Regular.otf https://github.com/adobe-fonts/source-han-sans/raw/refs/heads/release/SubsetOTF/CN/SourceHanSansCN-Regular.otf \
+          && fc-cache -fv
+          pwd && ls
+          export DEBIAN_FRONTEND=noninteractive
+          useradd -m selenium &&  echo "selenium:selenium" | chpasswd
+          nohup sudo -u selenium ./geckodriver --port 38472 > gec.log 2>&1 &
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85.0
+      - name: Test Firefox
+        env:
+          HEADLESS: true
+          FIREFOX_URL: http://127.0.0.1:38472
+        run: |
+          pwd && ls
+          cargo test -j 1 -vv -- --test-threads=1 || (cat gec.log && exit 101)
+      - name: Ready Chrome
+        id: chrome
+        run: |
+          cd selenium/rust
+          git checkout 70b8cb7f49 
+          apt install -y libgtk-3-dev jq
+          JSON=$(cargo run -- --browser chrome --output json)
+          echo $JSON
+          BROWSER_DRIVER=$(echo $JSON | jq --raw-output '.result.driver_path')
+          BROWSER_BINARY=$(echo $JSON | jq --raw-output '.result.browser_path')
+          echo $BROWSER_DRIVER
+          echo $BROWSER_BINARY
+          echo "BROWSER_DRIVER=$BROWSER_DRIVER" >> $GITHUB_OUTPUT
+          echo "BROWSER_BINARY=$BROWSER_BINARY" >> $GITHUB_OUTPUT
+
+      - name: Test Chrome
+        env:
+          BROWSER: chrome
+          HEADLESS: true
+          BROWSER_BINARY: ${{ steps.chrome.outputs.BROWSER_BINARY }}
+          BROWSER_DRIVER: ${{ steps.chrome.outputs.BROWSER_DRIVER }}
+          RUST_TEST_THREADS: 1
+        run: |
+          cargo test -j 1 -- --test-threads=1
+      

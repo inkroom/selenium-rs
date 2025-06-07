@@ -7,28 +7,28 @@ use selenium::{
 };
 
 fn use_firefox() -> Driver {
-    Driver::new(
-        if std::env::var("HEADLESS").is_ok() {
-            FirefoxBuilder::new().head_less()
-        } else {
-            FirefoxBuilder::new()
-        }
-        .timeout(1000)
-        .driver(
-            format!(
-                "{}/geckodriver",
-                std::env::current_dir()
-                    .map_err(|f| SError::Message(f.to_string()))
-                    .unwrap()
-                    .display()
-            )
-            .as_str(),
+    let mut option = if std::env::var("HEADLESS").is_ok() {
+        FirefoxBuilder::new().head_less()
+    } else {
+        FirefoxBuilder::new()
+    }
+    .timeout(1000)
+    .driver(
+        format!(
+            "{}/geckodriver",
+            std::env::current_dir()
+                .map_err(|f| SError::Message(f.to_string()))
+                .unwrap()
+                .display()
         )
-        // .binary("/usr/bin/firefox")
-        .private()
-        .build(),
+        .as_str(),
     )
-    .unwrap()
+    // .binary("/usr/bin/firefox")
+    .private();
+    if let Ok(url) = std::env::var("FIREFOX_URL") {
+        option = option.url(url.as_str());
+    }
+    Driver::new(option.build()).unwrap()
 }
 fn get_available_port() -> u16 {
     std::net::TcpListener::bind("0.0.0.0:0")
@@ -40,15 +40,12 @@ fn get_available_port() -> u16 {
 fn use_chrome() -> Driver {
     Driver::new(
         if std::env::var("HEADLESS").is_ok() {
-            ChromeBuilder::new()
-                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
-                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
-                .head_less()
+            ChromeBuilder::new().head_less()
         } else {
             ChromeBuilder::new()
-                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
-                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         }
+        .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
+        .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         .private()
         .timeout(1000)
         .add_argument("--no-zygote")
@@ -82,17 +79,13 @@ fn use_safari() -> Driver {
 fn use_edge() -> Driver {
     Driver::new(
         if std::env::var("HEADLESS").is_ok() {
-            EdgeBuilder::new()
-                .timeout(1000)
-                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
-                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
-                .head_less()
+            EdgeBuilder::new().head_less()
         } else {
             EdgeBuilder::new()
-                .timeout(1000)
-                .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
-                .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         }
+        .timeout(1000)
+        .driver(std::env::var("BROWSER_DRIVER").unwrap().as_str())
+        .binary(std::env::var("BROWSER_BINARY").unwrap().as_str())
         .private()
         .build(),
     )
