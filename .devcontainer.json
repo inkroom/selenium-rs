@@ -6,7 +6,8 @@
 			"extensions": [
 				"rust-lang.rust-analyzer",
 				"vadimcn.vscode-lldb",
-				"swellaby.vscode-rust-test-adapter"
+				"swellaby.vscode-rust-test-adapter",
+				"github.vscode-github-actions"
 			]
 		}
 	},
