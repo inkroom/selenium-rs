@@ -30,6 +30,7 @@ impl<T> Deref for ResponseWrapper<T> {
 // use serde_derive::{Deserialize, Serialize};
 pub(crate) struct Http {
     url: String,
+    timeout: u64,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -129,9 +130,10 @@ mod script {
 }
 
 impl Http {
-    pub(crate) fn new(url: &str) -> Self {
+    pub(crate) fn new(url: &str, timeout: u64) -> Self {
         Http {
             url: url.to_string(),
+            timeout: timeout,
         }
     }
 
@@ -140,6 +142,7 @@ impl Http {
         T: BrowserOption,
     {
         let v = minreq::post(format!("{}/session", self.url))
+            .with_timeout(self.timeout)
             .with_body(format!("{cap}"))
             .with_header("Content-Type", "application/json")
             .send()?;
@@ -154,12 +157,15 @@ impl Http {
     }
 
     pub(crate) fn delete_session(&self, session_id: &str) -> SResult<()> {
-        let _v = minreq::delete(format!("{}/session/{}", self.url, session_id)).send()?;
+        let _v = minreq::delete(format!("{}/session/{}", self.url, session_id))
+            .with_timeout(self.timeout)
+            .send()?;
         Ok(())
     }
 
     pub(crate) fn navigate(&self, session_id: &str, url: &str) -> SResult<()> {
         let _v = minreq::post(format!("{}/session/{}/url", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(format!(r#"{{"url":"{url}"}}"#))
             .send()?;
@@ -169,6 +175,7 @@ impl Http {
 
     pub(crate) fn get_current_url(&self, session_id: &str) -> SResult<String> {
         let v = minreq::get(format!("{}/session/{}/url", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -181,6 +188,7 @@ impl Http {
 
     pub(crate) fn back(&self, session_id: &str) -> SResult<()> {
         let v = minreq::post(format!("{}/session/{}/back", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -192,6 +200,7 @@ impl Http {
 
     pub(crate) fn forward(&self, session_id: &str) -> SResult<()> {
         let v = minreq::post(format!("{}/session/{}/forward", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -203,6 +212,7 @@ impl Http {
 
     pub(crate) fn refresh(&self, session_id: &str) -> SResult<()> {
         let v = minreq::post(format!("{}/session/{}/refresh", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -214,6 +224,7 @@ impl Http {
 
     pub(crate) fn get_title(&self, session_id: &str) -> SResult<String> {
         let v = minreq::get(format!("{}/session/{}/title", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -229,6 +240,7 @@ impl Http {
 impl Http {
     pub(crate) fn get_window_handle(&self, session_id: &str) -> SResult<String> {
         let v = minreq::get(format!("{}/session/{}/window", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -243,6 +255,7 @@ impl Http {
     /// Returns window handles
     pub(crate) fn close_window(&self, session_id: &str) -> SResult<Vec<String>> {
         let v = minreq::delete(format!("{}/session/{}/window", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -256,6 +269,7 @@ impl Http {
 
     pub(crate) fn switch_to_window(&self, session_id: &str, handle: &str) -> SResult<()> {
         let v = minreq::delete(format!("{}/session/{}/window", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(format!(r#"{{"handle":"{handle}","name":"{handle}"}}"#))
             .send()?;
@@ -272,6 +286,7 @@ impl Http {
             "{}/session/{}/window/handles",
             self.url, session_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -286,6 +301,7 @@ impl Http {
     /// `type`: "tab" or "window"
     pub(crate) fn new_window(&self, session_id: &str, window_type: &str) -> SResult<String> {
         let v = minreq::post(format!("{}/session/{}/window/new", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(format!(r#"{{"type":"{window_type}"}}"#))
             .send()?;
@@ -306,6 +322,7 @@ impl Http {
 
     pub(crate) fn switch_to_frame(&self, session_id: &str, id: SwitchToFrame) -> SResult<()> {
         let mut req = minreq::post(format!("{}/session/{}/frame", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json");
         match id {
             SwitchToFrame::Null => {
@@ -328,6 +345,7 @@ impl Http {
 
     pub(crate) fn switch_to_parent_frame(&self, session_id: &str) -> SResult<()> {
         let req = minreq::post(format!("{}/session/{}/frame", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json");
 
         let v = req.send()?;
@@ -340,6 +358,7 @@ impl Http {
 
     pub(crate) fn get_window_rect(&self, session_id: &str) -> SResult<Rect> {
         let v = minreq::get(format!("{}/session/{}/window/rect", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -353,6 +372,7 @@ impl Http {
 
     pub(crate) fn set_window_rect(&self, session_id: &str, rect: Rect) -> SResult<Rect> {
         let v = minreq::post(format!("{}/session/{}/window/rect", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(serde_json::to_string(&rect)?)
             .send()?;
@@ -370,6 +390,7 @@ impl Http {
             "{}/session/{}/window/maximize",
             self.url, session_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -386,6 +407,7 @@ impl Http {
             "{}/session/{}/window/minimize",
             self.url, session_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -402,6 +424,7 @@ impl Http {
             "{}/session/{}/window/fullscreen",
             self.url, session_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -415,6 +438,7 @@ impl Http {
 
     pub(crate) fn find_element(&self, session_id: &str, by: By<'_>) -> SResult<(String, String)> {
         let v = minreq::post(format!("{}/session/{}/element", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(serde_json::to_string(&by)?)
             .send()?;
@@ -436,6 +460,7 @@ impl Http {
         by: By<'_>,
     ) -> SResult<Vec<(String, String)>> {
         let v = minreq::post(format!("{}/session/{}/elements", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(serde_json::to_string(&by)?)
             .send()?;
@@ -466,6 +491,7 @@ impl Http {
             "{}/session/{}/element/{}/element",
             self.url, session_id, element_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body(serde_json::to_string(&by)?)
         .send()?;
@@ -491,6 +517,7 @@ impl Http {
             "{}/session/{}/element/{}/elements",
             self.url, session_id, element_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body(serde_json::to_string(&by)?)
         .send()?;
@@ -516,6 +543,7 @@ impl Http {
             "{}/session/{}/element/active",
             self.url, session_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -539,6 +567,7 @@ impl Http {
             "{}/session/{}/element/{}/shadow",
             self.url, session_id, element_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -563,6 +592,7 @@ impl Http {
             "{}/session/{}/shadow/{}/element",
             self.url, session_id, shadow_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body(serde_json::to_string(&by)?)
         .send()?;
@@ -588,6 +618,7 @@ impl Http {
             "{}/session/{}/shadow/{}/elements",
             self.url, session_id, shadow_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body(serde_json::to_string(&by)?)
         .send()?;
@@ -613,6 +644,7 @@ impl Http {
             "{}/session/{}/element/{}/selected",
             self.url, session_id, element_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -633,6 +665,7 @@ impl Http {
             "{}/session/{}/element/{}/attribute/{}",
             self.url, session_id, element_id, name
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -653,6 +686,7 @@ impl Http {
             "{}/session/{}/element/{}/property/{}",
             self.url, session_id, element_id, name
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -673,6 +707,7 @@ impl Http {
             "{}/session/{}/element/{}/css/{}",
             self.url, session_id, element_id, name
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -688,6 +723,7 @@ impl Http {
             "{}/session/{}/element/{}/text",
             self.url, session_id, element_id,
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -707,6 +743,7 @@ impl Http {
             "{}/session/{}/element/{}/name",
             self.url, session_id, element_id,
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -722,6 +759,7 @@ impl Http {
             "{}/session/{}/element/{}/rect",
             self.url, session_id, element_id,
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -737,6 +775,7 @@ impl Http {
             "{}/session/{}/element/{}/enabled",
             self.url, session_id, element_id,
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .send()?;
 
@@ -752,6 +791,7 @@ impl Http {
             "{}/session/{}/element/{}/click",
             self.url, session_id, element_id,
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body("{}")
         .send()?;
@@ -767,6 +807,7 @@ impl Http {
             "{}/session/{}/element/{}/clear",
             self.url, session_id, element_id,
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body("{}")
         .send()?;
@@ -788,6 +829,7 @@ impl Http {
             "{}/session/{}/element/{}/value",
             self.url, session_id, element_id,
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body(format!(
             r#"{{"text":"{keys}","value":[{}]}}"#,
@@ -806,6 +848,7 @@ impl Http {
 
     pub(crate) fn get_page_source(&self, session_id: &str) -> SResult<String> {
         let v = minreq::get(format!("{}/session/{}/source", self.url, session_id,))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
 
@@ -833,6 +876,7 @@ impl Http {
         };
 
         let v = minreq::post(format!("{}/session/{}/execute/sync", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(serde_json::to_string(&t)?)
             .send()?;
@@ -846,6 +890,7 @@ impl Http {
 
     pub(crate) fn set_timeouts(&self, session_id: &str, timeout: TimeoutType) -> SResult<()> {
         let mut req = minreq::post(format!("{}/session/{}/timeouts", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json");
         // req = match timeout {
         //     TimeoutType::Script(t) => req.with_body(format!(r#"{{"type":"script","ms":{t}}}"#)),
@@ -867,6 +912,7 @@ impl Http {
 
     pub(crate) fn get_timouts(&self, session_id: &str) -> SResult<Vec<TimeoutType>> {
         let req = minreq::get(format!("{}/session/{}/timeouts", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json");
 
         let v = req.send()?;
@@ -901,6 +947,7 @@ impl Http {
         map.insert("actions", req);
         let j = serde_json::to_string(&map)?;
         let v = minreq::post(format!("{}/session/{}/actions", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(j)
             .send()?;
@@ -913,6 +960,7 @@ impl Http {
 
     pub(crate) fn dismiss_alert(&self, session_id: &str) -> SResult<()> {
         let v = minreq::post(format!("{}/session/{}/alert/dismiss", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body("{}")
             .send()?;
@@ -924,6 +972,7 @@ impl Http {
 
     pub(crate) fn accept_alert(&self, session_id: &str) -> SResult<()> {
         let v = minreq::post(format!("{}/session/{}/alert/accept", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body("{}")
             .send()?;
@@ -935,6 +984,7 @@ impl Http {
 
     pub(crate) fn get_alert_text(&self, session_id: &str) -> SResult<String> {
         let v = minreq::get(format!("{}/session/{}/alert/text", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .send()?;
         if v.status_code != 200 {
@@ -946,6 +996,7 @@ impl Http {
 
     pub(crate) fn send_alert_text(&self, session_id: &str, text: &str) -> SResult<()> {
         let v = minreq::post(format!("{}/session/{}/alert/text", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(format!(r#"{{"text":"{text}"}}"#))
             .send()?;
@@ -956,6 +1007,7 @@ impl Http {
     }
     pub(crate) fn take_screenshot(&self, session_id: &str) -> SResult<Vec<u8>> {
         let v = minreq::get(format!("{}/session/{}/screenshot", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body("{}")
             .send()?;
@@ -974,6 +1026,7 @@ impl Http {
             "{}/session/{}/element/{}/screenshot",
             self.url, session_id, element_id
         ))
+        .with_timeout(self.timeout)
         .with_header("Content-Type", "application/json")
         .with_body("{}")
         .send()?;
@@ -999,6 +1052,7 @@ impl Http {
         };
 
         let v = minreq::post(format!("{}/session/{}/execute/sync", self.url, session_id))
+            .with_timeout(self.timeout)
             .with_header("Content-Type", "application/json")
             .with_body(serde_json::to_string(&t)?)
             .send()?;
@@ -1115,6 +1169,7 @@ mod tests {
                     "dom.ipc.processCount".to_string(),
                     MultipleTypeMapValue::Number(4),
                 )]),
+                timeout: 10,
                 proxy: None,
                 binary: None,
             }),

@@ -44,6 +44,7 @@ mod tests {
             binary: Some("3".to_string()),
             env: HashMap::new(),
             proxy: None,
+            timeout: 10,
         };
         println!("{}", f);
         assert_eq!(

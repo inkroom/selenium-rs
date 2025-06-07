@@ -266,7 +266,7 @@ impl Driver {
                 panic!("enable https features to use https protocol");
             }
 
-            let http = Http::new(url);
+            let http = Http::new(url, option.timeout());
             let b = option.browser();
             // 开启session
             let cap = Capability {
@@ -285,7 +285,10 @@ impl Driver {
             let b = option.browser();
             // 启用driver进程
             let (mut s, port) = DriverProcess::new(driver, option.env(), option.browser())?;
-            let http = Http::new(format!("http://127.0.0.1:{port}").as_str());
+            let http = Http::new(
+                format!("http://127.0.0.1:{port}").as_str(),
+                option.timeout(),
+            );
             // 开启session
             let cap = Capability {
                 browser_name: None,

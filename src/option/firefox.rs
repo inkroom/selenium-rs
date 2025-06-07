@@ -87,6 +87,7 @@ mod tests {
                 "dom.ipc.processCount".to_string(),
                 MultipleTypeMapValue::Number(4),
             )]),
+            timeout:10,
             proxy: None,
         };
         println!("{}", f);

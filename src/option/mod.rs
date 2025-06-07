@@ -29,6 +29,7 @@ macro_rules! browser_option{
             pub(crate) binary: Option<String>,
             pub(crate) env: std::collections::HashMap<String, String>,
             pub(crate) proxy:Option<$crate::option::Proxy>,
+            pub(crate) timeout: u64,
             $(
                 $(#[$field_meta])*
                 $field_vis $field_name : $field_type,
@@ -41,6 +42,7 @@ macro_rules! browser_option{
             pub(crate) binary: Option<String>,
             pub(crate) env: std::collections::HashMap<String, String>,
             pub(crate) proxy:Option<$crate::option::Proxy>,
+            pub(crate) timeout: u64,
             $(
                 $(#[$field_meta])*
                 $field_vis $field_name : $field_type,
@@ -62,6 +64,10 @@ macro_rules! browser_option{
 
             fn browser(&self)->$crate::option::Browser{
                 $browser
+            }
+
+            fn timeout(&self)->u64{
+                self.timeout
             }
         }
 
@@ -97,6 +103,11 @@ macro_rules! browser_option{
                 self
             }
 
+            pub fn timeout(mut self,timeout:u64) -> Self{
+                self.timeout = timeout;
+                self
+            }
+
             pub fn new() -> Self {
                 Self {
                     url: None,
@@ -104,6 +115,7 @@ macro_rules! browser_option{
                     binary: None,
                     env: std::collections::HashMap::new(),
                     proxy: None,
+                    timeout: 10,
                     $(
 
                             $field_name : <$field_type>::default(),
@@ -122,7 +134,8 @@ macro_rules! browser_option{
                     driver: self.driver,
                     binary: self.binary,
                     env: self.env,
-                    proxy:self.proxy,
+                    proxy: self.proxy,
+                    timeout: self.timeout,
                     $(
 
                          $field_name : self.$field_name,
@@ -247,6 +260,8 @@ pub trait BrowserOption: Serialize + Display {
     fn env(&self) -> &HashMap<std::string::String, std::string::String>;
 
     fn browser(&self) -> Browser;
+    /// http timeout
+    fn timeout(&self) -> u64;
 }
 pub enum ProxyType {
     /// Proxy auto-configuration from URL

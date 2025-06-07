@@ -132,5 +132,5 @@ fn teke_screenshot() {
     let driver = common::new_driver();
     let v = driver.take_screenshot().unwrap();
     // 如果使用了隐私模式启动的话，会启动一个英文环境，导致截图出现中文乱码
-    std::fs::write("screenshot.png", v).unwrap();
+    std::fs::write("target/screenshot.png", v).unwrap();
 }
