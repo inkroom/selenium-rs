@@ -44,7 +44,7 @@ let option = FirefoxBuilder::new()
         format!(
             "{}/geckodriver",
             std::env::current_dir()
-                .map_err(|f| SError::message(f.to_string()))
+                .map_err(|f| SError::Message(f.to_string()))
                 .unwrap()
                 .display()
         )
