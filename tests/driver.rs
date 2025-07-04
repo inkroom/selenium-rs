@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+
+use crate::common::sleep;
 mod common;
 
 #[test]
@@ -86,7 +88,10 @@ fn dismiss_alert() {
 
     driver.dismiss_alert().unwrap();
 
-    assert_eq!("after alert", ele.get_property("innerHTML").unwrap().unwrap());
+    assert_eq!(
+        "after alert",
+        ele.get_property("innerHTML").unwrap().unwrap()
+    );
 }
 
 #[test]
@@ -97,13 +102,19 @@ fn confirm() {
 
     driver.accept_alert().unwrap();
 
-    assert_eq!("yes confirm", ele.get_property("innerHTML").unwrap().unwrap());
+    assert_eq!(
+        "yes confirm",
+        ele.get_property("innerHTML").unwrap().unwrap()
+    );
 
     ele.click().unwrap();
 
     driver.dismiss_alert().unwrap();
 
-    assert_eq!("no confirm", ele.get_property("innerHTML").unwrap().unwrap());
+    assert_eq!(
+        "no confirm",
+        ele.get_property("innerHTML").unwrap().unwrap()
+    );
 }
 
 #[test]
@@ -133,4 +144,30 @@ fn teke_screenshot() {
     let v = driver.take_screenshot().unwrap();
     // 如果使用了隐私模式启动的话，会启动一个英文环境，导致截图出现中文乱码
     std::fs::write("target/screenshot.png", v).unwrap();
+}
+
+#[test]
+fn test_switch_to_window() {
+    let driver = common::new_driver();
+    let w = driver.get_window_handles().unwrap();
+    let nw = driver
+        .new_window(selenium::driver::NewWindowType::Tab)
+        .unwrap();
+
+    driver.switch_to_window(&nw).unwrap();
+    assert_eq!("about:blank", driver.get_current_url().unwrap());
+    assert_eq!(2, driver.get_window_handles().unwrap().len());
+    // 换回去
+    driver.close_window().unwrap();
+    driver.switch_to_window(w[0].as_str()).unwrap();
+
+    assert_eq!(
+        format!(
+            "file://{}/tests/common/test.html",
+            std::env::current_dir().unwrap().display()
+        ),
+        driver.get_current_url().unwrap()
+    );
+
+    assert_eq!(1, driver.get_window_handles().unwrap().len());
 }

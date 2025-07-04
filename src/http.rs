@@ -298,10 +298,10 @@ impl Http {
     pub(crate) fn switch_to_window(&self, session_id: &str, handle: &str) -> SResult<()> {
         let v = self
             .req(
-                minreq::Method::Delete,
+                minreq::Method::Post,
                 format!("{}/session/{}/window", self.url, session_id),
             )
-            .with_body(format!(r#"{{"handle":"{handle}","name":"{handle}"}}"#))
+            .with_body(format!(r#"{{"handle":"{handle}"}}"#))
             .send()?;
 
         if v.status_code != 200 {
@@ -314,7 +314,7 @@ impl Http {
     pub(crate) fn get_window_handles(&self, session_id: &str) -> SResult<Vec<String>> {
         let v = self
             .req(
-                minreq::Method::Delete,
+                minreq::Method::Get,
                 format!("{}/session/{}/window/handles", self.url, session_id),
             )
             .send()?;
