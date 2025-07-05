@@ -33,7 +33,6 @@ impl Serialize for FirefoxOption {
         S: serde::Serializer,
     {
         let mut s = serializer.serialize_map(None)?;
-
         s.serialize_entry("browserName", "firefox")?;
 
         let mut option = std::collections::BTreeMap::new();
@@ -54,14 +53,16 @@ impl Serialize for FirefoxOption {
         if let Some(v) = &self.binary {
             option.insert("binary", MultipleTypeMapValue::String(v.clone()));
         }
+        
+        if !self.env.is_empty() {
+           let t= self.env.iter().map(|(k,v)|{ (k.to_string(),MultipleTypeMapValue::String(v.to_string())) }).collect();
+            option.insert("env", MultipleTypeMapValue::Map(t));
+        }
+
         s.serialize_entry("moz:firefoxOptions", &option)?;
 
         if let Some(proxy) = &self.proxy {
             s.serialize_entry("proxy", proxy)?;
-        }
-
-        if !self.env.is_empty() {
-            s.serialize_entry("env", &self.env)?;
         }
 
         s.end()
@@ -82,7 +83,7 @@ mod tests {
             driver: None,
             binary: Some("3".to_string()),
             arguments: vec!["1".to_string(), "2".to_string()],
-            env: HashMap::new(),
+            env: HashMap::from([("1".to_string(), "2".to_string())]),
             pref: HashMap::from([(
                 "dom.ipc.processCount".to_string(),
                 MultipleTypeMapValue::Number(4),
@@ -92,7 +93,7 @@ mod tests {
         };
         println!("{}", f);
         assert_eq!(
-            r#"{"browserName":"firefox","moz:firefoxOptions":{"args":["1","2"],"binary":"3","prefs":{"dom.ipc.processCount":4}}}"#,
+            r#"{"browserName":"firefox","moz:firefoxOptions":{"args":["1","2"],"binary":"3","env":{"1":"2"},"prefs":{"dom.ipc.processCount":4}}}"#,
             serde_json::to_string(&f).unwrap()
         );
     }
