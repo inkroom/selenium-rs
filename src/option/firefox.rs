@@ -26,6 +26,26 @@ impl FirefoxBuilder {
     pub fn private(self) -> Self {
         self.add_argument("--private-window")
     }
+    ///
+    /// 禁用css加载
+    ///
+    pub fn disable_css(self)->Self{
+        self.add_pref_i32("permissions.default.stylesheet", 2)
+    }
+
+    ///
+    /// 限制图片加载
+    ///
+    pub fn disable_image(self)->Self{
+        self.add_pref_i32("permissions.default.image", 2)
+    }
+
+    ///
+    /// 禁用js
+    ///
+    pub fn disable_javascript(self)->Self{
+        self.add_pref_string("javascript.enabled", "false")
+    }
 }
 impl Serialize for FirefoxOption {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
