@@ -154,7 +154,7 @@ impl<'a> FirefoxBuilder<'a> {
             }
 
             // zip 转base64
-            let base64 = http::base64::encode(writer.into_inner().as_slice());
+            let base64 = crate::base64::encode(writer.into_inner().as_slice());
             self.profile = Some(base64);
             Ok(self)
         }
