@@ -40,6 +40,8 @@ pub(crate) struct Capability<T> {
     pub(crate) platform_name: Option<String>,
 
     pub(crate) always_match: Option<T>,
+
+    pub(crate) first_match: Vec<T>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -74,7 +76,7 @@ impl<T: BrowserOption> Display for Capability<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(
             format!(
-                r#"{{"capabilities":{{"alwaysMatch":{}}}}}"#,
+                r#"{{"capabilities":{{"alwaysMatch":{{}},"firstMatch":[{}]}}}}"#,
                 self.always_match
                     .as_ref()
                     .map_or("{}".to_string(), |f| format!("{f}"))
@@ -1168,7 +1170,7 @@ impl From<serde_json::Error> for SError {
     }
 }
 
-mod base64 {
+pub(crate) mod base64 {
     use std::{collections::HashMap, sync::OnceLock};
 
     const B64: [char; 65] = [
@@ -1188,6 +1190,44 @@ mod base64 {
             }
             m
         })
+    }
+
+    pub(crate) fn encode(input: &[u8]) -> String {
+        const BASE64_CHARS: &[u8] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut result = Vec::new();
+        let mut i = 0;
+        let len = input.len();
+
+        while i < len {
+            let byte1 = input[i];
+            let byte2 = if i + 1 < len { input[i + 1] } else { 0 };
+            let byte3 = if i + 2 < len { input[i + 2] } else { 0 };
+
+            let index1 = (byte1 >> 2) as usize;
+            let index2 = (((byte1 & 0x03) << 4) | (byte2 >> 4)) as usize;
+            let index3 = (((byte2 & 0x0f) << 2) | (byte3 >> 6)) as usize;
+            let index4 = (byte3 & 0x3f) as usize;
+
+            result.push(BASE64_CHARS[index1]);
+            result.push(BASE64_CHARS[index2]);
+
+            if i + 1 < len {
+                result.push(BASE64_CHARS[index3]);
+            } else {
+                result.push(b'=');
+            }
+
+            if i + 2 < len {
+                result.push(BASE64_CHARS[index4]);
+            } else {
+                result.push(b'=');
+            }
+
+            i += 3;
+        }
+
+        String::from_utf8(result).unwrap()
     }
 
     pub(crate) fn decode(data: &[u8]) -> Vec<u8> {
@@ -1263,12 +1303,14 @@ mod tests {
                 timeout: 10,
                 proxy: None,
                 binary: None,
+                profile: None,
             }),
+            first_match: Vec::new(),
         };
 
         println!("{c}");
         assert_eq!(
-            r#"{"capabilities":{"alwaysMatch":{"browserName":"firefox","moz:firefoxOptions":{"args":["1","2"],"prefs":{"dom.ipc.processCount":4}}}}}"#,
+            r#"{"capabilities":{"alwaysMatch":{},"firstMatch":[{"browserName":"firefox","moz:firefoxOptions":{"args":["1","2"],"prefs":{"dom.ipc.processCount":4}}}]}}"#,
             format!("{c}")
         );
 
@@ -1276,9 +1318,10 @@ mod tests {
             browser_name: None,
             platform_name: None,
             always_match: None,
+            first_match: Vec::new(),
         };
 
         println!("{c}");
-        assert_eq!(r#"{"capabilities":{"alwaysMatch":{}}}"#, format!("{c}"));
+        assert_eq!(r#"{"capabilities":{"alwaysMatch":{},"firstMatch":[{}]}}"#, format!("{c}"));
     }
 }

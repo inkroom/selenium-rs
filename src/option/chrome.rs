@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{borrow::Cow, collections::HashMap, fmt::Display};
 
 use serde::{ser::SerializeMap, Serialize};
 
@@ -13,7 +13,7 @@ browser_option!(
     pub struct ChromeOption {}
 );
 
-impl ChromeBuilder {
+impl <'a> ChromeBuilder<'a> {
     ///
     /// 设置为headless模式
     ///
@@ -27,7 +27,7 @@ impl ChromeBuilder {
         self.add_argument("--incognito")
     }
 }
-impl Serialize for ChromeOption {
+impl<'a> Serialize for ChromeOption <'a>{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -46,13 +46,13 @@ impl Serialize for ChromeOption {
                 MultipleTypeMapValue::Array(
                     self.arguments
                         .iter()
-                        .map(|f| MultipleTypeMapValue::String(f.clone()))
+                        .map(|f| MultipleTypeMapValue::String(Cow::from(f.as_str())))
                         .collect(),
                 ),
             );
         }
         if let Some(v) = &self.binary {
-            option.insert("binary", MultipleTypeMapValue::String(v.clone()));
+            option.insert("binary", MultipleTypeMapValue::String(Cow::from(v.as_str())));
         }
 
         s.serialize_entry("goog:chromeOptions", &option)?;

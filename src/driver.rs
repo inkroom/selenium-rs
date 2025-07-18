@@ -273,6 +273,7 @@ impl Driver {
                 browser_name: Some(format!("{}", option.browser())),
                 platform_name: None,
                 always_match: Some(option),
+                first_match:Vec::new(),
             };
             let session = http.new_session(cap)?;
             return Ok(Driver {
@@ -294,6 +295,7 @@ impl Driver {
                 browser_name: None,
                 platform_name: None,
                 always_match: Some(option),
+                first_match:Vec::new(),
             };
 
             match http.new_session(cap) {

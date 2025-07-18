@@ -13,7 +13,7 @@ browser_option!(
     pub struct SafariOption {}
 );
 
-impl Serialize for SafariOption {
+impl<'a> Serialize for SafariOption<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -45,6 +45,7 @@ mod tests {
             env: HashMap::new(),
             proxy: None,
             timeout: 10,
+            pref: HashMap::new(),
         };
         println!("{}", f);
         assert_eq!(

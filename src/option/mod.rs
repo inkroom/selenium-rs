@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{borrow::Cow, collections::HashMap, fmt::Display};
 
 use serde::{
     ser::{SerializeMap, SerializeSeq},
@@ -23,12 +23,13 @@ macro_rules! browser_option{
     }
     ) => {
         $(#[$meta])*
-        $vis struct $struct_name{
+        $vis struct $struct_name <'a> {
             pub(crate) url: Option<String>,
             pub(crate) driver: Option<String>,
             pub(crate) binary: Option<String>,
             pub(crate) env: std::collections::HashMap<String, String>,
             pub(crate) proxy:Option<$crate::option::Proxy>,
+            pub(crate) pref: std::collections::HashMap<String, $crate::option::MultipleTypeMapValue<'a>>,
             pub(crate) timeout: u64,
             $(
                 $(#[$field_meta])*
@@ -36,12 +37,13 @@ macro_rules! browser_option{
             )*
         }
 
-        $vis struct $builder_name{
+        $vis struct $builder_name <'a> {
             pub(crate) url: Option<String>,
             pub(crate) driver: Option<String>,
             pub(crate) binary: Option<String>,
             pub(crate) env: std::collections::HashMap<String, String>,
             pub(crate) proxy:Option<$crate::option::Proxy>,
+            pub(crate) pref: std::collections::HashMap<String, $crate::option::MultipleTypeMapValue<'a>>,
             pub(crate) timeout: u64,
             $(
                 $(#[$field_meta])*
@@ -49,7 +51,7 @@ macro_rules! browser_option{
             )*
         }
 
-        impl $crate::option::BrowserOption for $struct_name {
+        impl <'a> $crate::option::BrowserOption for $struct_name <'a> {
             fn url(&self) -> Option<&str> {
                 self.url.as_deref()
             }
@@ -71,7 +73,7 @@ macro_rules! browser_option{
             }
         }
 
-        impl Display for $struct_name {
+        impl <'a> Display for $struct_name<'a> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 f.write_fmt(format_args!(
                     "{}",
@@ -80,7 +82,7 @@ macro_rules! browser_option{
             }
         }
 
-        impl $builder_name {
+        impl <'a> $builder_name <'a> {
             /// 用于远程，如果使用https,需要开启 https features
             /// 优先级高于driver
             pub fn url(mut self, url: &str) -> Self {
@@ -116,6 +118,7 @@ macro_rules! browser_option{
                     env: std::collections::HashMap::new(),
                     proxy: None,
                     timeout: 10,
+                    pref: std::collections::HashMap::new(),
                     $(
 
                             $field_name : <$field_type>::default(),
@@ -128,7 +131,7 @@ macro_rules! browser_option{
                 self
             }
 
-            pub fn build(self) -> $struct_name {
+            pub fn build(self) -> $struct_name<'a> {
                 $struct_name {
                     url: self.url,
                     driver: self.driver,
@@ -136,6 +139,7 @@ macro_rules! browser_option{
                     env: self.env,
                     proxy: self.proxy,
                     timeout: self.timeout,
+                    pref: self.pref,
                     $(
 
                          $field_name : self.$field_name,
@@ -162,9 +166,8 @@ macro_rules! browser_option{
             browser_option!(1,
                 $builder_name,$browser,
                 $(#[$meta])*
-                $vis struct $struct_name{
+                $vis struct $struct_name {
                     pub(crate) arguments: Vec<String>,
-                    pub(crate) pref: std::collections::HashMap<String, $crate::option::MultipleTypeMapValue>,
                     $(
                         $(#[$field_meta])*
                         $field_vis $field_name : $field_type,
@@ -172,7 +175,7 @@ macro_rules! browser_option{
                 }
             );
 
-            impl $builder_name {
+            impl <'a> $builder_name <'a> {
                 /// 传递给浏览器的启动参数
                 pub fn add_argument(mut self, arg: &str) -> Self {
                     self.arguments.push(arg.to_string());
@@ -184,10 +187,10 @@ macro_rules! browser_option{
                     self
                 }
 
-                pub fn add_pref_string(mut self, key: &str, value: &str) -> Self {
+                pub fn add_pref_string(mut self, key: &str, value: &'a str) -> Self {
                     self.pref.insert(
                         key.to_string(),
-                        $crate::option::MultipleTypeMapValue::String(value.to_string()),
+                        $crate::option::MultipleTypeMapValue::String(std::borrow::Cow::from(value)),
                     );
                     self
                 }
@@ -214,21 +217,22 @@ impl Display for Browser {
 }
 
 #[derive(Clone)]
-pub(crate) enum MultipleTypeMapValue {
+pub(crate) enum MultipleTypeMapValue<'a> {
     Number(i32),
-    String(String),
-    Map(HashMap<String, MultipleTypeMapValue>),
-    Array(Vec<MultipleTypeMapValue>),
+    String(Cow<'a, str>),
+    Map(HashMap<String, MultipleTypeMapValue<'a>>),
+    Array(Vec<MultipleTypeMapValue<'a>>),
 }
 
-impl Serialize for MultipleTypeMapValue {
+
+impl Serialize for MultipleTypeMapValue<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         match self {
             MultipleTypeMapValue::Number(v) => serializer.serialize_i32(*v),
-            MultipleTypeMapValue::String(v) => serializer.serialize_str(v.as_str()),
+            MultipleTypeMapValue::String(v) => serializer.serialize_str(v),
             MultipleTypeMapValue::Map(hash_map) => {
                 let mut s = serializer.serialize_map(Some(hash_map.len()))?;
                 for (key, value) in hash_map.iter() {

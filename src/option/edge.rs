@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{borrow::Cow, fmt::Display};
 
 use serde::{ser::SerializeMap, Serialize};
 
@@ -6,7 +6,7 @@ use super::{Browser, MultipleTypeMapValue};
 
 browser_option!(2, EdgeBuilder, Browser::Edge, pub struct EdgeOption {});
 
-impl Serialize for EdgeOption {
+impl <'a> Serialize for EdgeOption<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -21,7 +21,7 @@ impl Serialize for EdgeOption {
                 MultipleTypeMapValue::Array(
                     self.arguments
                         .iter()
-                        .map(|f| MultipleTypeMapValue::String(f.clone()))
+                        .map(|f| MultipleTypeMapValue::String(Cow::from(f.as_str())))
                         .collect(),
                 ),
             );
@@ -34,7 +34,7 @@ impl Serialize for EdgeOption {
         // {"browserName":"MicrosoftEdge","ms:edgeOptions":{"args":["headless"],"extensions":[]},"proxy":{"autodetect":false,"httpProxy":"http://127.0.0.1:1254","proxyType":1}}
     }
 }
-impl EdgeBuilder {
+impl<'a> EdgeBuilder<'a> {
     ///
     /// 设置为headless模式
     ///
