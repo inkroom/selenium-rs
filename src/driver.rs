@@ -483,6 +483,27 @@ impl Driver {
             .execute_script::<T>(&self.session.session_id, script, args)
     }
 
+    ///
+    /// 
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use selenium::option::FirefoxBuilder;
+    /// use selenium::driver::Driver;
+    /// let driver = Driver::new(FirefoxBuilder::new().build()).unwrap();
+    /// let _:() = driver.execute_async_script("arguments[arguments.length - 1]('result')", &[]).unwrap();
+    /// ```
+    ///
+    pub fn execute_async_script<T: serde::de::DeserializeOwned>(
+        &self,
+        script: &str,
+        args: &[&str],
+    ) -> SResult<T> {
+        self.http
+            .execute_async_script::<T>(&self.session.session_id, script, args)
+    }
+
     pub fn dismiss_alert(&self) -> SResult<()> {
         self.http.dismiss_alert(&self.session.session_id)
     }

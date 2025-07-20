@@ -960,6 +960,37 @@ impl Http {
         Ok(res.value)
     }
 
+    pub(crate) fn execute_async_script<T: serde::de::DeserializeOwned>(
+        &self,
+        session_id: &str,
+        script: &str,
+        args: &[&str],
+    ) -> SResult<T> {
+        #[derive(Serialize)]
+        struct TempExecuteScript {
+            script: String,
+            args: Vec<String>,
+        }
+        let t = TempExecuteScript {
+            script: script.to_string(),
+            args: args.iter().map(|f| f.to_string()).collect(),
+        };
+
+        let v = self
+            .req(
+                minreq::Method::Post,
+                format!("{}/session/{}/execute/async", self.url, session_id),
+            )
+            .with_body(serde_json::to_string(&t)?)
+            .send()?;
+
+        if v.status_code != 200 {
+            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
+        }
+        let res: ResponseWrapper<T> = serde_json::from_str(v.as_str()?)?;
+        Ok(res.value)
+    }
+
     pub(crate) fn set_timeouts(&self, session_id: &str, timeout: TimeoutType) -> SResult<()> {
         let mut req = self.req(
             minreq::Method::Post,
