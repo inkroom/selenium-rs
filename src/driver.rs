@@ -71,7 +71,7 @@ impl DriverProcess {
 
         // 测试启动是否结束
         for _ in 0..3 {
-            if let Err(e) = minreq::get(format!("http://127.0.0.1:{port}")).send() {
+            if let Err(e) = ureq::get(format!("http://127.0.0.1:{port}")).call() {
                 if e.to_string().contains("refuse") {
                     // 连接失败，查看是否退出
                     match s.try_wait() {
@@ -88,6 +88,8 @@ impl DriverProcess {
                         }
                         Err(e) => return Err(SError::Driver(e.to_string())),
                     }
+                }else{
+                    break;
                 }
             };
         }
@@ -273,7 +275,7 @@ impl Driver {
                 browser_name: Some(format!("{}", option.browser())),
                 platform_name: None,
                 always_match: Some(option),
-                first_match:Vec::new(),
+                first_match: Vec::new(),
             };
             let session = http.new_session(cap)?;
             return Ok(Driver {
@@ -295,7 +297,7 @@ impl Driver {
                 browser_name: None,
                 platform_name: None,
                 always_match: Some(option),
-                first_match:Vec::new(),
+                first_match: Vec::new(),
             };
 
             match http.new_session(cap) {
@@ -484,7 +486,7 @@ impl Driver {
     }
 
     ///
-    /// 
+    ///
     ///
     /// # Examples
     ///

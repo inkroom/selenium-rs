@@ -1,14 +1,19 @@
 //!
 //! 负责实际的http通信
-use std::{collections::HashMap, fmt::Display, ops::Deref};
+use std::{collections::HashMap, fmt::Display, ops::Deref, time::Duration};
 
 use serde::{
     ser::{SerializeSeq, SerializeStruct},
     Deserialize, Serialize, Serializer,
 };
+use ureq::http::{self, Request};
 
 use crate::{
-    actions::Device, base64, driver::{By, Rect, Session, SwitchToFrame, TimeoutType}, option::BrowserOption, Origin, SError, SResult
+    actions::Device,
+    base64,
+    driver::{By, Rect, Session, SwitchToFrame, TimeoutType},
+    option::BrowserOption,
+    Origin, SError, SResult,
 };
 
 #[derive(Deserialize)]
@@ -28,6 +33,7 @@ impl<T> Deref for ResponseWrapper<T> {
 pub(crate) struct Http {
     url: String,
     timeout: u64,
+    inner: ureq::Agent,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -128,217 +134,156 @@ mod script {
     include!(concat!(env!("OUT_DIR"), "/is_displayed.rs"));
 }
 
+enum Method {
+    Get(String),
+    Post(String, String),
+    Delete(String),
+}
+
 impl Http {
     pub(crate) fn new(url: &str, timeout: u64) -> Self {
         Http {
             url: url.to_string(),
             timeout: timeout,
+            inner: ureq::Agent::new_with_config(
+                ureq::Agent::config_builder()
+                    .timeout_connect(Some(Duration::from_secs(timeout)))
+                    .timeout_global(Some(Duration::from_secs(timeout)))
+                    .build(),
+            ),
         }
     }
 
-    pub fn req(&self, method: minreq::Method, url: String) -> minreq::Request {
-        let mut r =
-            minreq::Request::new(method, url).with_header("Content-Type", "application/json");
-        if self.timeout != 0 {
-            r = r.with_timeout(self.timeout)
-        }
-        r
+    fn req_without_res(&self, method: Method) -> SResult<()> {
+        let mut v = match method {
+            Method::Get(uri) => self.inner.get(uri).call(),
+            Method::Post(url, body) => self
+                .inner
+                .post(url)
+                .content_type("application/json")
+                .send(body),
+            Method::Delete(uri) => self.inner.delete(uri).call(),
+        }?;
+        Ok(())
+    }
+
+    fn req<T: serde::de::DeserializeOwned>(&self, method: Method) -> SResult<T> {
+        match method {
+            Method::Get(uri) => self.inner.get(uri).call(),
+            Method::Post(url, body) => self
+                .inner
+                .post(url)
+                .content_type("application/json")
+                .send(body),
+            Method::Delete(uri) => self.inner.delete(uri).call(),
+        }?
+        .body_mut()
+        .read_json()
+        .map_err(|f| SError::from(f))
     }
 
     pub(crate) fn new_session<T>(&self, cap: Capability<T>) -> SResult<Session>
     where
         T: BrowserOption,
     {
-        let v = self
-            .req(minreq::Method::Post, format!("{}/session", self.url))
-            .with_body(format!("{cap}"))
-            .send()?;
-
-        if v.status_code == 200 {
-            let session: ResponseWrapper<Session> = serde_json::from_str(v.as_str()?)?;
-            return Ok(Session {
-                session_id: session.value.session_id.clone(),
-            });
-        }
-        Err(SError::Http(v.status_code, format!("{}", v.as_str()?)))
+        let session: ResponseWrapper<Session> = self.req(Method::Post(
+            format!("{}/session", self.url),
+            format!("{cap}"),
+        ))?;
+        return Ok(Session {
+            session_id: session.value.session_id.clone(),
+        });
     }
 
     pub(crate) fn delete_session(&self, session_id: &str) -> SResult<()> {
-        let _v = self
-            .req(
-                minreq::Method::Delete,
-                format!("{}/session/{}", self.url, session_id),
-            )
-            .with_timeout(self.timeout)
-            .send()?;
-        Ok(())
+        self.req_without_res(Method::Delete(format!(
+            "{}/session/{}",
+            self.url, session_id
+        )))
     }
 
     pub(crate) fn navigate(&self, session_id: &str, url: &str) -> SResult<()> {
-        let _v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/url", self.url, session_id),
-            )
-            .with_body(format!(r#"{{"url":"{url}"}}"#))
-            .send()?;
-
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/url", self.url, session_id),
+            format!(r#"{{"url":"{url}"}}"#),
+        ))
     }
 
     pub(crate) fn get_current_url(&self, session_id: &str) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/url", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let session: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        let session: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/url",
+            self.url, session_id
+        )))?;
+        Ok(session.value)
     }
 
     pub(crate) fn back(&self, session_id: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/back", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/back", self.url, session_id),
+            String::new(),
+        ))
     }
 
     pub(crate) fn forward(&self, session_id: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/forward", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/forward", self.url, session_id),
+            String::new(),
+        ))
     }
 
     pub(crate) fn refresh(&self, session_id: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/refresh", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/refresh", self.url, session_id),
+            String::new(),
+        ))
     }
 
     pub(crate) fn get_title(&self, session_id: &str) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/title", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let session: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        let session: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/title",
+            self.url, session_id
+        )))?;
+        Ok(session.value)
     }
 }
 
 /// Contexts
 impl Http {
     pub(crate) fn get_window_handle(&self, session_id: &str) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/window", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        let session: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/window",
+            self.url, session_id
+        )))?;
+        Ok(session.value)
     }
     ///
     /// Returns window handles
     pub(crate) fn close_window(&self, session_id: &str) -> SResult<Vec<String>> {
-        let v = self
-            .req(
-                minreq::Method::Delete,
-                format!("{}/session/{}/window", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<Vec<String>> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        let session: ResponseWrapper<Vec<String>> = self.req(Method::Delete(format!(
+            "{}/session/{}/window",
+            self.url, session_id
+        )))?;
+        Ok(session.value)
     }
 
     pub(crate) fn switch_to_window(&self, session_id: &str, handle: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/window", self.url, session_id),
-            )
-            .with_body(format!(r#"{{"handle":"{handle}"}}"#))
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/window", self.url, session_id),
+            format!(r#"{{"handle":"{handle}"}}"#),
+        ))
     }
 
     pub(crate) fn get_window_handles(&self, session_id: &str) -> SResult<Vec<String>> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/window/handles", self.url, session_id),
-            )
-            .send()?;
+        let session: ResponseWrapper<Vec<String>> = self.req(Method::Get(format!(
+            "{}/session/{}/window/handles",
+            self.url, session_id
+        )))?;
 
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<Vec<String>> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        Ok(session.value)
     }
     ///
     /// `type`: "tab" or "window"
     pub(crate) fn new_window(&self, session_id: &str, window_type: &str) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/window/new", self.url, session_id),
-            )
-            .with_body(format!(r#"{{"type":"{window_type}"}}"#))
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
         #[derive(Deserialize, Debug)]
         struct NewWindowResponse {
             handle: String,
@@ -346,143 +291,78 @@ impl Http {
             _type: String,
         }
 
-        let session: ResponseWrapper<NewWindowResponse> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.handle.clone())
+        let session: ResponseWrapper<NewWindowResponse> = self.req(Method::Post(
+            format!("{}/session/{}/window/new", self.url, session_id),
+            format!(r#"{{"type":"{window_type}"}}"#),
+        ))?;
+        Ok(session.value.handle)
     }
 
     pub(crate) fn switch_to_frame(&self, session_id: &str, id: SwitchToFrame) -> SResult<()> {
-        let mut req = self.req(
-            minreq::Method::Post,
+        self.req_without_res(Method::Post(
             format!("{}/session/{}/frame", self.url, session_id),
-        );
-        match id {
-            SwitchToFrame::Null => {
-                req = req.with_body(r#"{"id":null}"#.to_string());
-            }
-            SwitchToFrame::Number(s) => {
-                req = req.with_body(format!(r#"{{"id":{s}}}"#));
-            }
-            SwitchToFrame::Element(s) => {
-                req = req.with_body(format!(r#"{{"id":"{s}"}}"#));
-            }
-        }
-        let v = req.send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        Ok(())
+            match id {
+                SwitchToFrame::Null => r#"{"id":null}"#.to_string(),
+                SwitchToFrame::Number(s) => format!(r#"{{"id":{s}}}"#),
+                SwitchToFrame::Element(s) => format!(r#"{{"id":"{s}"}}"#),
+            },
+        ))
     }
 
     pub(crate) fn switch_to_parent_frame(&self, session_id: &str) -> SResult<()> {
-        let req = self.req(
-            minreq::Method::Post,
+        self.req_without_res(Method::Post(
             format!("{}/session/{}/frame", self.url, session_id),
-        );
-
-        let v = req.send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        Ok(())
+            String::new(),
+        ))
     }
 
     pub(crate) fn get_window_rect(&self, session_id: &str) -> SResult<Rect> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/window/rect", self.url, session_id),
-            )
-            .send()?;
+        let session: ResponseWrapper<Rect> = self.req(Method::Get(format!(
+            "{}/session/{}/window/rect",
+            self.url, session_id
+        )))?;
 
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        Ok(session.value)
     }
 
     pub(crate) fn set_window_rect(&self, session_id: &str, rect: Rect) -> SResult<Rect> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/window/rect", self.url, session_id),
-            )
-            .with_body(serde_json::to_string(&rect)?)
-            .send()?;
+        let session: ResponseWrapper<Rect> = self.req(Method::Post(
+            format!("{}/session/{}/window/rect", self.url, session_id),
+            serde_json::to_string(&rect)?,
+        ))?;
 
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        Ok(session.value)
     }
 
     pub(crate) fn maximize_window(&self, session_id: &str) -> SResult<Rect> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/window/maximize", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        let session: ResponseWrapper<Rect> = self.req(Method::Post(
+            format!("{}/session/{}/window/maximize", self.url, session_id),
+            String::new(),
+        ))?;
+        Ok(session.value)
     }
 
     pub(crate) fn minimize_window(&self, session_id: &str) -> SResult<Rect> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/window/minimize", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        let session: ResponseWrapper<Rect> = self.req(Method::Post(
+            format!("{}/session/{}/window/minimize", self.url, session_id),
+            String::new(),
+        ))?;
+        Ok(session.value)
     }
 
     pub(crate) fn fullscreen_window(&self, session_id: &str) -> SResult<Rect> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/window/fullscreen", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let session: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
-        Ok(session.value.clone())
+        let session: ResponseWrapper<Rect> = self.req(Method::Post(
+            format!("{}/session/{}/window/fullscreen", self.url, session_id),
+            String::new(),
+        ))?;
+        Ok(session.value)
     }
 
     pub(crate) fn find_element(&self, session_id: &str, by: By<'_>) -> SResult<(String, String)> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/element", self.url, session_id),
-            )
-            .with_body(serde_json::to_string(&by)?)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<HashMap<String, String>> = self.req(Method::Post(
+            format!("{}/session/{}/element", self.url, session_id),
+            serde_json::to_string(&by)?,
+        ))?;
         for ele in res.value {
             return Ok(ele);
         }
@@ -494,19 +374,11 @@ impl Http {
         session_id: &str,
         by: By<'_>,
     ) -> SResult<Vec<(String, String)>> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/elements", self.url, session_id),
-            )
-            .with_body(serde_json::to_string(&by)?)
-            .send()?;
+        let res: ResponseWrapper<Vec<HashMap<String, String>>> = self.req(Method::Post(
+            format!("{}/session/{}/elements", self.url, session_id),
+            serde_json::to_string(&by)?,
+        ))?;
 
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<Vec<HashMap<String, String>>> = serde_json::from_str(v.as_str()?)?;
         Ok(res
             .value
             .iter()
@@ -524,22 +396,13 @@ impl Http {
         element_id: &str,
         by: By<'_>,
     ) -> SResult<(String, String)> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!(
-                    "{}/session/{}/element/{}/element",
-                    self.url, session_id, element_id
-                ),
-            )
-            .with_body(serde_json::to_string(&by)?)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<HashMap<String, String>> = self.req(Method::Post(
+            format!(
+                "{}/session/{}/element/{}/element",
+                self.url, session_id, element_id
+            ),
+            serde_json::to_string(&by)?,
+        ))?;
         for ele in res.value {
             return Ok(ele);
         }
@@ -552,22 +415,14 @@ impl Http {
         element_id: &str,
         by: By<'_>,
     ) -> SResult<Vec<(String, String)>> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!(
-                    "{}/session/{}/element/{}/elements",
-                    self.url, session_id, element_id
-                ),
-            )
-            .with_body(serde_json::to_string(&by)?)
-            .send()?;
+        let res: ResponseWrapper<Vec<HashMap<String, String>>> = self.req(Method::Post(
+            format!(
+                "{}/session/{}/element/{}/elements",
+                self.url, session_id, element_id
+            ),
+            serde_json::to_string(&by)?,
+        ))?;
 
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<Vec<HashMap<String, String>>> = serde_json::from_str(v.as_str()?)?;
         Ok(res
             .value
             .iter()
@@ -580,18 +435,10 @@ impl Http {
     }
 
     pub(crate) fn get_active_element(&self, session_id: &str) -> SResult<(String, String)> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/element/active", self.url, session_id),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<HashMap<String, String>> = self.req(Method::Get(format!(
+            "{}/session/{}/element/active",
+            self.url, session_id
+        )))?;
         for ele in res.value {
             return Ok(ele);
         }
@@ -603,21 +450,10 @@ impl Http {
         session_id: &str,
         element_id: &str,
     ) -> SResult<(String, String)> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/shadow",
-                    self.url, session_id, element_id
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<HashMap<String, String>> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/shadow",
+            self.url, session_id, element_id
+        )))?;
         for ele in res.value {
             return Ok(ele);
         }
@@ -630,22 +466,13 @@ impl Http {
         shadow_id: &str,
         by: By<'_>,
     ) -> SResult<(String, String)> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!(
-                    "{}/session/{}/shadow/{}/element",
-                    self.url, session_id, shadow_id
-                ),
-            )
-            .with_body(serde_json::to_string(&by)?)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<HashMap<String, String>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<HashMap<String, String>> = self.req(Method::Post(
+            format!(
+                "{}/session/{}/shadow/{}/element",
+                self.url, session_id, shadow_id
+            ),
+            serde_json::to_string(&by)?,
+        ))?;
         for ele in res.value {
             return Ok(ele);
         }
@@ -658,22 +485,13 @@ impl Http {
         shadow_id: &str,
         by: By<'_>,
     ) -> SResult<Vec<(String, String)>> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!(
-                    "{}/session/{}/shadow/{}/elements",
-                    self.url, session_id, shadow_id
-                ),
-            )
-            .with_body(serde_json::to_string(&by)?)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<Vec<HashMap<String, String>>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<Vec<HashMap<String, String>>> = self.req(Method::Post(
+            format!(
+                "{}/session/{}/shadow/{}/elements",
+                self.url, session_id, shadow_id
+            ),
+            serde_json::to_string(&by)?,
+        ))?;
         Ok(res
             .value
             .iter()
@@ -686,20 +504,10 @@ impl Http {
     }
 
     pub(crate) fn is_element_selected(&self, session_id: &str, element_id: &str) -> SResult<bool> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/selected",
-                    self.url, session_id, element_id
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<bool> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<bool> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/selected",
+            self.url, session_id, element_id
+        )))?;
         Ok(res.value)
     }
 
@@ -709,20 +517,10 @@ impl Http {
         element_id: &str,
         name: &str,
     ) -> SResult<Option<String>> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/attribute/{}",
-                    self.url, session_id, element_id, name
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<Option<String>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<Option<String>> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/attribute/{}",
+            self.url, session_id, element_id, name
+        )))?;
         Ok(res.value)
     }
 
@@ -732,20 +530,10 @@ impl Http {
         element_id: &str,
         name: &str,
     ) -> SResult<Option<String>> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/property/{}",
-                    self.url, session_id, element_id, name
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<Option<String>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<Option<String>> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/property/{}",
+            self.url, session_id, element_id, name
+        )))?;
         Ok(res.value)
     }
 
@@ -755,38 +543,19 @@ impl Http {
         element_id: &str,
         name: &str,
     ) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/css/{}",
-                    self.url, session_id, element_id, name
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/css/{}",
+            self.url, session_id, element_id, name
+        )))?;
         Ok(res.value)
     }
 
     pub(crate) fn get_element_text(&self, session_id: &str, element_id: &str) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/text",
-                    self.url, session_id, element_id,
-                ),
-            )
-            .send()?;
+        let res: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/text",
+            self.url, session_id, element_id,
+        )))?;
 
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
         Ok(res.value)
     }
 
@@ -795,93 +564,47 @@ impl Http {
         session_id: &str,
         element_id: &str,
     ) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/name",
-                    self.url, session_id, element_id,
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/name",
+            self.url, session_id, element_id,
+        )))?;
         Ok(res.value)
     }
 
     pub(crate) fn get_element_rect(&self, session_id: &str, element_id: &str) -> SResult<Rect> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/rect",
-                    self.url, session_id, element_id,
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<Rect> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<Rect> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/rect",
+            self.url, session_id, element_id,
+        )))?;
         Ok(res.value)
     }
 
     pub(crate) fn is_element_enabled(&self, session_id: &str, element_id: &str) -> SResult<bool> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/enabled",
-                    self.url, session_id, element_id,
-                ),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<bool> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<bool> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/enabled",
+            self.url, session_id, element_id,
+        )))?;
         Ok(res.value)
     }
 
     pub(crate) fn element_click(&self, session_id: &str, element_id: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!(
-                    "{}/session/{}/element/{}/click",
-                    self.url, session_id, element_id,
-                ),
-            )
-            .with_body("{}")
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!(
+                "{}/session/{}/element/{}/click",
+                self.url, session_id, element_id,
+            ),
+            "{}".to_string(),
+        ))
     }
 
     pub(crate) fn element_clear(&self, session_id: &str, element_id: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!(
-                    "{}/session/{}/element/{}/clear",
-                    self.url, session_id, element_id,
-                ),
-            )
-            .with_body("{}")
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!(
+                "{}/session/{}/element/{}/clear",
+                self.url, session_id, element_id,
+            ),
+            "{}".to_string(),
+        ))
     }
 
     pub(crate) fn element_send_keys(
@@ -890,42 +613,26 @@ impl Http {
         element_id: &str,
         keys: &str,
     ) -> SResult<()> {
-        let keys = keys.trim();
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!(
-                    "{}/session/{}/element/{}/value",
-                    self.url, session_id, element_id,
-                ),
-            )
-            .with_body(format!(
+        self.req_without_res(Method::Post(
+            format!(
+                "{}/session/{}/element/{}/value",
+                self.url, session_id, element_id,
+            ),
+            format!(
                 r#"{{"text":"{keys}","value":[{}]}}"#,
                 keys.chars()
                     .map(|f| format!(r#""{}""#, f))
                     .collect::<Vec<String>>()
                     .join(",")
-            ))
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+            ),
+        ))
     }
 
     pub(crate) fn get_page_source(&self, session_id: &str) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/source", self.url, session_id,),
-            )
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/source",
+            self.url, session_id,
+        )))?;
         Ok(res.value)
     }
 
@@ -945,18 +652,10 @@ impl Http {
             args: args.iter().map(|f| f.to_string()).collect(),
         };
 
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/execute/sync", self.url, session_id),
-            )
-            .with_body(serde_json::to_string(&t)?)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<T> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<T> = self.req(Method::Post(
+            format!("{}/session/{}/execute/sync", self.url, session_id),
+            serde_json::to_string(&t)?,
+        ))?;
         Ok(res.value)
     }
 
@@ -976,57 +675,29 @@ impl Http {
             args: args.iter().map(|f| f.to_string()).collect(),
         };
 
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/execute/async", self.url, session_id),
-            )
-            .with_body(serde_json::to_string(&t)?)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<T> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<T> = self.req(Method::Post(
+            format!("{}/session/{}/execute/async", self.url, session_id),
+            serde_json::to_string(&t)?,
+        ))?;
         Ok(res.value)
     }
 
     pub(crate) fn set_timeouts(&self, session_id: &str, timeout: TimeoutType) -> SResult<()> {
-        let mut req = self.req(
-            minreq::Method::Post,
+        self.req_without_res(Method::Post(
             format!("{}/session/{}/timeouts", self.url, session_id),
-        );
-        // req = match timeout {
-        //     TimeoutType::Script(t) => req.with_body(format!(r#"{{"type":"script","ms":{t}}}"#)),
-        //     TimeoutType::PageLoad(t) => req.with_body(format!(r#"{{"type":"pageLoad","ms":{t}}}"#)),
-        //     TimeoutType::Implicit(t) => req.with_body(format!(r#"{{"type":"implicit","ms":{t}}}"#)),
-        // };
-        req = match timeout {
-            TimeoutType::Script(t) => req.with_body(format!(r#"{{"script":{t}}}"#)),
-            TimeoutType::PageLoad(t) => req.with_body(format!(r#"{{"pageLoad":{t}}}"#)),
-            TimeoutType::Implicit(t) => req.with_body(format!(r#"{{"implicit":{t}}}"#)),
-        };
-        let v = req.send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+            match timeout {
+                TimeoutType::Script(t) => format!(r#"{{"script":{t}}}"#),
+                TimeoutType::PageLoad(t) => format!(r#"{{"pageLoad":{t}}}"#),
+                TimeoutType::Implicit(t) => format!(r#"{{"implicit":{t}}}"#),
+            },
+        ))
     }
 
     pub(crate) fn get_timouts(&self, session_id: &str) -> SResult<Vec<TimeoutType>> {
-        let req = self.req(
-            minreq::Method::Get,
-            format!("{}/session/{}/timeouts", self.url, session_id),
-        );
-
-        let v = req.send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-
-        let res: ResponseWrapper<HashMap<String, u32>> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<HashMap<String, u32>> = self.req(Method::Get(format!(
+            "{}/session/{}/timeouts",
+            self.url, session_id
+        )))?;
 
         Ok(res
             .value
@@ -1050,88 +721,46 @@ impl Http {
     ) -> SResult<()> {
         let mut map = HashMap::new();
         map.insert("actions", req);
-        let j = serde_json::to_string(&map)?;
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/actions", self.url, session_id),
-            )
-            .with_body(j)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        let j: String = serde_json::to_string(&map)?;
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/actions", self.url, session_id),
+            j,
+        ))
     }
 
     pub(crate) fn dismiss_alert(&self, session_id: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/alert/dismiss", self.url, session_id),
-            )
-            .with_body("{}")
-            .send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/alert/dismiss", self.url, session_id),
+            "{}".to_string(),
+        ))
     }
 
     pub(crate) fn accept_alert(&self, session_id: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/alert/accept", self.url, session_id),
-            )
-            .with_body("{}")
-            .send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/alert/accept", self.url, session_id),
+            "{}".to_string(),
+        ))
     }
 
     pub(crate) fn get_alert_text(&self, session_id: &str) -> SResult<String> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/alert/text", self.url, session_id),
-            )
-            .send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/alert/text",
+            self.url, session_id
+        )))?;
         Ok(res.value)
     }
 
     pub(crate) fn send_alert_text(&self, session_id: &str, text: &str) -> SResult<()> {
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/alert/text", self.url, session_id),
-            )
-            .with_body(format!(r#"{{"text":"{text}"}}"#))
-            .send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        Ok(())
+        self.req_without_res(Method::Post(
+            format!("{}/session/{}/alert/text", self.url, session_id),
+            format!(r#"{{"text":"{text}"}}"#),
+        ))
     }
     pub(crate) fn take_screenshot(&self, session_id: &str) -> SResult<Vec<u8>> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!("{}/session/{}/screenshot", self.url, session_id),
-            )
-            .with_body("{}")
-            .send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/screenshot",
+            self.url, session_id
+        )))?;
         Ok(base64::decode(res.value.as_bytes()))
     }
     pub(crate) fn take_element_screenshot(
@@ -1139,20 +768,10 @@ impl Http {
         session_id: &str,
         element_id: &str,
     ) -> SResult<Vec<u8>> {
-        let v = self
-            .req(
-                minreq::Method::Get,
-                format!(
-                    "{}/session/{}/element/{}/screenshot",
-                    self.url, session_id, element_id
-                ),
-            )
-            .with_body("{}")
-            .send()?;
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<String> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<String> = self.req(Method::Get(format!(
+            "{}/session/{}/element/{}/screenshot",
+            self.url, session_id, element_id
+        )))?;
         Ok(base64::decode(res.value.as_bytes()))
     }
 
@@ -1170,25 +789,21 @@ impl Http {
             args: vec![element],
         };
 
-        let v = self
-            .req(
-                minreq::Method::Post,
-                format!("{}/session/{}/execute/sync", self.url, session_id),
-            )
-            .with_body(serde_json::to_string(&t)?)
-            .send()?;
-
-        if v.status_code != 200 {
-            return Err(SError::Http(v.status_code, v.as_str()?.to_string()));
-        }
-        let res: ResponseWrapper<bool> = serde_json::from_str(v.as_str()?)?;
+        let res: ResponseWrapper<bool> = self.req(Method::Post(
+            format!("{}/session/{}/execute/sync", self.url, session_id),
+            serde_json::to_string(&t)?,
+        ))?;
         Ok(res.value)
     }
 }
 
-impl From<minreq::Error> for SError {
-    fn from(value: minreq::Error) -> Self {
-        SError::Http(-1, format!("{}", value))
+impl From<ureq::Error> for SError {
+    fn from(value: ureq::Error) -> Self {
+        match value {
+            ureq::Error::StatusCode(code) => SError::Http(code as i32, "".to_string()),
+            // ureq::Error::Http(e)=>{ SError::Http(, ()) },
+            _ => SError::Http(-1, format!("{}", value)),
+        }
     }
 }
 
@@ -1197,7 +812,6 @@ impl From<serde_json::Error> for SError {
         SError::Http(-2, format!("{}", value))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1253,6 +867,9 @@ mod tests {
         };
 
         println!("{c}");
-        assert_eq!(r#"{"capabilities":{"alwaysMatch":{},"firstMatch":[{}]}}"#, format!("{c}"));
+        assert_eq!(
+            r#"{"capabilities":{"alwaysMatch":{},"firstMatch":[{}]}}"#,
+            format!("{c}")
+        );
     }
 }

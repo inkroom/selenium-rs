@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 bon = "3.3.0"
-minreq = { version = "2.13.0", features = ["serde_json"] }
+ureq = {version = "3.0.12", features=["json"]}
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
 timeout-readwrite = "0.4.0"
@@ -13,5 +13,4 @@ zip = { version = "4.3.0", optional = true }
 [build-dependencies]
 tinyget = { version = "1.0.2", features = ["https"] }
 [features]
-https = ["minreq/https"]
 profile=["dep:zip"]
