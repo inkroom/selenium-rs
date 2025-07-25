@@ -140,6 +140,16 @@ enum Method {
     Delete(String),
 }
 
+impl Method {
+    pub(crate) fn log(&self) {
+        match self {
+            Method::Get(uri) => log::debug!("Method: Get, uri: {uri}"),
+            Method::Post(uri, body) => log::debug!("Method: Post, uri: {uri}, body: {body}"),
+            Method::Delete(uri) => log::debug!("Method: Delete, uri: {uri}"),
+        }
+    }
+}
+
 impl Http {
     pub(crate) fn new(url: &str, timeout: u64) -> Self {
         Http {
@@ -155,6 +165,7 @@ impl Http {
     }
 
     fn req_without_res(&self, method: Method) -> SResult<()> {
+        method.log();
         let mut v = match method {
             Method::Get(uri) => self.inner.get(uri).call(),
             Method::Post(url, body) => self
@@ -168,7 +179,8 @@ impl Http {
     }
 
     fn req<T: serde::de::DeserializeOwned>(&self, method: Method) -> SResult<T> {
-        match method {
+        method.log();
+       let v =  match method {
             Method::Get(uri) => self.inner.get(uri).call(),
             Method::Post(url, body) => self
                 .inner
@@ -178,8 +190,10 @@ impl Http {
             Method::Delete(uri) => self.inner.delete(uri).call(),
         }?
         .body_mut()
-        .read_json()
-        .map_err(|f| SError::from(f))
+        .read_to_string()
+        .map_err(|f| SError::from(f))?;
+        log::debug!("Response: {v}");
+        serde_json::from_str(v.as_str()).map_err(|e|SError::Http(-2, e.to_string()))
     }
 
     pub(crate) fn new_session<T>(&self, cap: Capability<T>) -> SResult<Session>
