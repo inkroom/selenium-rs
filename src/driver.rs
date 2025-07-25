@@ -71,25 +71,21 @@ impl DriverProcess {
 
         // 测试启动是否结束
         for _ in 0..3 {
-            if let Err(e) = ureq::get(format!("http://127.0.0.1:{port}")).call() {
-                if e.to_string().contains("refuse") {
-                    // 连接失败，查看是否退出
-                    match s.try_wait() {
-                        Ok(Some(e)) => {
-                            // 已经退出
-                            return Err(SError::Driver(format!(
-                                "start driver fail, exit code : {}",
-                                e.code().unwrap_or(-1)
-                            )));
-                        }
-                        Ok(None) => {
-                            // 没有退出，就延迟等待
-                            sleep(Duration::from_millis(500));
-                        }
-                        Err(e) => return Err(SError::Driver(e.to_string())),
+            if Http::test_connect(format!("http://127.0.0.1:{port}")) {
+                // 连接失败，查看是否退出
+                match s.try_wait() {
+                    Ok(Some(e)) => {
+                        // 已经退出
+                        return Err(SError::Driver(format!(
+                            "start driver fail, exit code : {}",
+                            e.code().unwrap_or(-1)
+                        )));
                     }
-                } else {
-                    break;
+                    Ok(None) => {
+                        // 没有退出，就延迟等待
+                        sleep(Duration::from_millis(500));
+                    }
+                    Err(e) => return Err(SError::Driver(e.to_string())),
                 }
             };
         }

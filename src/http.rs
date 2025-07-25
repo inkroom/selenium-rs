@@ -151,6 +151,14 @@ impl Method {
 }
 
 impl Http {
+    pub(crate) fn test_connect<T: AsRef<str>>(url: T)->bool {
+        if let Err(e) = ureq::get(url.as_ref()).call() {
+            if e.to_string().contains("refuse"){
+                return true;
+            }
+        }
+        false
+    }
     pub(crate) fn new(url: &str, timeout: u64) -> Self {
         Http {
             url: url.to_string(),
@@ -165,7 +173,6 @@ impl Http {
     }
 
     fn req_without_res(&self, method: Method) -> SResult<()> {
-        method.log();
         let mut v = match method {
             Method::Get(uri) => self.inner.get(uri).call(),
             Method::Post(url, body) => self
