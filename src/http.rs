@@ -180,7 +180,7 @@ impl Http {
 
     fn req<T: serde::de::DeserializeOwned>(&self, method: Method) -> SResult<T> {
         method.log();
-       let v =  match method {
+        let v = match method {
             Method::Get(uri) => self.inner.get(uri).call(),
             Method::Post(url, body) => self
                 .inner
@@ -193,7 +193,7 @@ impl Http {
         .read_to_string()
         .map_err(|f| SError::from(f))?;
         log::debug!("Response: {v}");
-        serde_json::from_str(v.as_str()).map_err(|e|SError::Http(-2, e.to_string()))
+        serde_json::from_str(v.as_str()).map_err(|e| SError::Http(-2, e.to_string()))
     }
 
     pub(crate) fn new_session<T>(&self, cap: Capability<T>) -> SResult<Session>

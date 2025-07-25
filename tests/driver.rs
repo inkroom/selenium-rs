@@ -60,8 +60,13 @@ fn execute_script() {
 fn execute_async_script() {
     let driver = common::new_driver();
 
-    let r: String = driver.execute_async_script("setTimeout(()=> {arguments[arguments.length - 1]('result');} ,1000);  ", &[]).unwrap();
-    
+    let r: String = driver
+        .execute_async_script(
+            "setTimeout(()=> {arguments[arguments.length - 1]('result');} ,1000);  ",
+            &[],
+        )
+        .unwrap();
+
     assert_eq!("result", r);
 }
 

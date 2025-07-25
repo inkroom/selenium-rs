@@ -2,7 +2,6 @@ use std::{borrow::Cow, clone, collections::HashMap, fmt::Display, io::Write, tim
 
 use serde::{ser::SerializeMap, Serialize};
 
-
 use crate::{http, option::MultipleTypeMapValue, SError};
 
 use super::{Browser, BrowserOption, Proxy};
@@ -124,7 +123,6 @@ impl<'a> FirefoxBuilder<'a> {
     pub fn set_profile(mut self, profile_dir: &str) -> Result<Self, SError> {
         #[cfg(feature = "profile")]
         {
-        
             // 复制一份到临时目录
             let temp = format!(
                 "{}/{}-selenium-rs/",
@@ -160,7 +158,6 @@ impl<'a> FirefoxBuilder<'a> {
         }
         #[cfg(not(feature = "profile"))]
         {
-
             panic!("enable feature profile to use profile")
         }
     }
@@ -256,16 +253,19 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature="profile")]
+    #[cfg(feature = "profile")]
     fn profile() {
         let v = FirefoxBuilder::new()
-            .set_profile(format!(
-                "{}/src",
-                std::env::current_dir()
-                    .map_err(|f| SError::Message(f.to_string()))
-                    .unwrap()
-                    .display()
-            ).as_str())
+            .set_profile(
+                format!(
+                    "{}/src",
+                    std::env::current_dir()
+                        .map_err(|f| SError::Message(f.to_string()))
+                        .unwrap()
+                        .display()
+                )
+                .as_str(),
+            )
             .unwrap()
             .build();
 

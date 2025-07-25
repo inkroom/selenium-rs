@@ -133,7 +133,11 @@ fn take_screenshot() {
     let driver = common::new_driver();
     let ele = driver.find_element(By::Css("#label")).unwrap();
 
-    std::fs::write("target/element_screenshot.png", ele.take_screenshot().unwrap()).unwrap();
+    std::fs::write(
+        "target/element_screenshot.png",
+        ele.take_screenshot().unwrap(),
+    )
+    .unwrap();
 }
 
 #[test]

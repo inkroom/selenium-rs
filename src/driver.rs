@@ -88,7 +88,7 @@ impl DriverProcess {
                         }
                         Err(e) => return Err(SError::Driver(e.to_string())),
                     }
-                }else{
+                } else {
                     break;
                 }
             };

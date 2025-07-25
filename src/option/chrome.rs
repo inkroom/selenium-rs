@@ -13,7 +13,7 @@ browser_option!(
     pub struct ChromeOption {}
 );
 
-impl <'a> ChromeBuilder<'a> {
+impl<'a> ChromeBuilder<'a> {
     ///
     /// 设置为headless模式
     ///
@@ -27,7 +27,7 @@ impl <'a> ChromeBuilder<'a> {
         self.add_argument("--incognito")
     }
 }
-impl<'a> Serialize for ChromeOption <'a>{
+impl<'a> Serialize for ChromeOption<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -52,7 +52,10 @@ impl<'a> Serialize for ChromeOption <'a>{
             );
         }
         if let Some(v) = &self.binary {
-            option.insert("binary", MultipleTypeMapValue::String(Cow::from(v.as_str())));
+            option.insert(
+                "binary",
+                MultipleTypeMapValue::String(Cow::from(v.as_str())),
+            );
         }
 
         s.serialize_entry("goog:chromeOptions", &option)?;

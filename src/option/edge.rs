@@ -6,7 +6,7 @@ use super::{Browser, MultipleTypeMapValue};
 
 browser_option!(2, EdgeBuilder, Browser::Edge, pub struct EdgeOption {});
 
-impl <'a> Serialize for EdgeOption<'a> {
+impl<'a> Serialize for EdgeOption<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -47,5 +47,4 @@ impl<'a> EdgeBuilder<'a> {
     pub fn private(self) -> Self {
         self.add_argument("-inprivate")
     }
-    
 }

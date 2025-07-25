@@ -224,7 +224,6 @@ pub(crate) enum MultipleTypeMapValue<'a> {
     Array(Vec<MultipleTypeMapValue<'a>>),
 }
 
-
 impl Serialize for MultipleTypeMapValue<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -496,9 +495,9 @@ impl Proxy {
 }
 
 mod chrome;
+mod edge;
 mod firefox;
 mod safari;
-mod edge;
 
 pub use firefox::FirefoxBuilder;
 pub use firefox::FirefoxOption;
