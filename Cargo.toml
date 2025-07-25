@@ -5,13 +5,14 @@ edition = "2021"
 
 [dependencies]
 bon = "3.3.0"
-ureq = {version = "3.0.12", features=["json"]}
+ureq = {version = "3.0.12", features=["json"],default-features = false  }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
 timeout-readwrite = "0.4.0"
 zip = { version = "4.3.0", optional = true }
 log = "0.4.27"
 [build-dependencies]
-tinyget = { version = "1.0.2", features = ["https"] }
+ureq = {version = "3.0.12"}
 [features]
 profile=["dep:zip"]
+https=["ureq/rustls"]
