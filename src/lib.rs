@@ -42,6 +42,8 @@ impl From<std::io::Error> for SError {
     }
 }
 
+impl std::error::Error for SError {}
+
 type SResult<T> = Result<T, SError>;
 mod actions;
 pub mod driver;
