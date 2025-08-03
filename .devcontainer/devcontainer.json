@@ -1,0 +1,22 @@
+{
+	"name": "selenium-rs",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"forwardPorts":[5901],
+	"overrideCommand":false,
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"vadimcn.vscode-lldb",
+				"swellaby.vscode-rust-test-adapter",
+				"github.vscode-github-actions"
+			]
+		}
+	},
+	"containerEnv":{"DISPLAY":":1","VNCPASS":"selenium"},
+	"onCreateCommand":
+		"git config user.name $(git --no-pager log --pretty=\"%an\" | head -n 1) && git config user.email $(git --no-pager log --pretty=\"%ce\" | head -n 1) && (test -e geckodriver || ( if [ \"$(arch)\" = \"aarch64\" ] ; then export F=\"linux-aarch64\"; else export F=\"linux64\"; fi && wget -O gec.tar.gz \"https://github.com/mozilla/geckodriver/releases/download/v0.36.0/geckodriver-v0.36.0-$F.tar.gz\" && tar -xf gec.tar.gz && rm -rf gec.tar.gz ) ) && cargo clean && cargo build"
+	
+}
