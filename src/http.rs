@@ -151,9 +151,9 @@ impl Method {
 }
 
 impl Http {
-    pub(crate) fn test_connect<T: AsRef<str>>(url: T)->bool {
+    pub(crate) fn test_connect<T: AsRef<str>>(url: T) -> bool {
         if let Err(e) = ureq::get(url.as_ref()).call() {
-            if e.to_string().contains("refuse"){
+            if e.to_string().contains("refuse") {
                 return true;
             }
         }
@@ -173,13 +173,19 @@ impl Http {
     }
 
     fn req_without_res(&self, method: Method) -> SResult<()> {
+        method.log();
         let mut v = match method {
             Method::Get(uri) => self.inner.get(uri).call(),
-            Method::Post(url, body) => self
-                .inner
-                .post(url)
-                .content_type("application/json")
-                .send(body),
+            Method::Post(url, body) => {
+                self.inner
+                    .post(url)
+                    .content_type("application/json")
+                    .send(if body.is_empty() {
+                        "{}".to_string()
+                    } else {
+                        body
+                    })
+            }
             Method::Delete(uri) => self.inner.delete(uri).call(),
         }?;
         Ok(())
@@ -189,11 +195,16 @@ impl Http {
         method.log();
         let v = match method {
             Method::Get(uri) => self.inner.get(uri).call(),
-            Method::Post(url, body) => self
-                .inner
-                .post(url)
-                .content_type("application/json")
-                .send(body),
+            Method::Post(url, body) => {
+                self.inner
+                    .post(url)
+                    .content_type("application/json")
+                    .send(if body.is_empty() {
+                        "{}".to_string()
+                    } else {
+                        body
+                    })
+            }
             Method::Delete(uri) => self.inner.delete(uri).call(),
         }?
         .body_mut()
@@ -614,7 +625,7 @@ impl Http {
                 "{}/session/{}/element/{}/click",
                 self.url, session_id, element_id,
             ),
-            "{}".to_string(),
+            String::new(),
         ))
     }
 
@@ -624,7 +635,7 @@ impl Http {
                 "{}/session/{}/element/{}/clear",
                 self.url, session_id, element_id,
             ),
-            "{}".to_string(),
+            String::new(),
         ))
     }
 
@@ -752,14 +763,14 @@ impl Http {
     pub(crate) fn dismiss_alert(&self, session_id: &str) -> SResult<()> {
         self.req_without_res(Method::Post(
             format!("{}/session/{}/alert/dismiss", self.url, session_id),
-            "{}".to_string(),
+            String::new(),
         ))
     }
 
     pub(crate) fn accept_alert(&self, session_id: &str) -> SResult<()> {
         self.req_without_res(Method::Post(
             format!("{}/session/{}/alert/accept", self.url, session_id),
-            "{}".to_string(),
+            String::new(),
         ))
     }
 
@@ -822,7 +833,7 @@ impl From<ureq::Error> for SError {
     fn from(value: ureq::Error) -> Self {
         match value {
             ureq::Error::StatusCode(code) => SError::Http(code as i32, "".to_string()),
-            // ureq::Error::Http(e)=>{ SError::Http(, ()) },
+            ureq::Error::Http(e) => SError::Http(-2, format!("{e}")),
             _ => SError::Http(-1, format!("{}", value)),
         }
     }

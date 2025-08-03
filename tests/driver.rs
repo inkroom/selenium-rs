@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use selenium::driver::Rect;
+
 use crate::common::sleep;
 mod common;
 
@@ -184,4 +186,67 @@ fn test_switch_to_window() {
     );
 
     assert_eq!(1, driver.get_window_handles().unwrap().len());
+}
+
+#[test]
+fn test_refresh() {
+    let driver = common::new_driver();
+
+    driver.get("https://rust-lang.com").unwrap();
+    driver.refresh().unwrap();
+}
+
+#[test]
+fn test_forward_and_back() {
+    let driver = common::new_driver();
+
+    driver.get("https://rust-lang.com").unwrap();
+    let url1 = driver.get_current_url().unwrap();
+
+    driver
+        .get("https://www.rust-lang.org/learn/get-started")
+        .unwrap();
+    let url2 = driver.get_current_url().unwrap();
+
+    driver.back().unwrap();
+
+    assert_eq!(url1, driver.get_current_url().unwrap());
+
+    driver.forward().unwrap();
+
+    assert_eq!(url2, driver.get_current_url().unwrap());
+}
+
+#[test]
+fn test_fullscreen_window() {
+    let driver = common::new_driver();
+    driver.set_window_rect(Rect::size(100.0, 100.0)).unwrap();
+    let rect = driver.get_window_rect().unwrap();
+
+    driver.fullscreen_window().unwrap();
+
+    let n_rect = driver.get_window_rect().unwrap();
+
+    assert_ne!(rect.width, n_rect.width);
+    assert_ne!(rect.height, n_rect.height);
+}
+
+#[test]
+fn test_minimize_window() {
+    let driver = common::new_driver();
+
+    driver.minimize_window().unwrap();
+}
+
+#[test]
+fn test_maximize_window() {
+    let driver = common::new_driver();
+    driver.set_window_rect(Rect::size(100.0, 100.0)).unwrap();
+    let rect = driver.get_window_rect().unwrap();
+
+    driver.maximize_window().unwrap();
+    let n_rect = driver.get_window_rect().unwrap();
+
+    assert_ne!(rect.width, n_rect.width);
+    assert_ne!(rect.height, n_rect.height);
 }
