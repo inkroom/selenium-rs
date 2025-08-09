@@ -165,6 +165,7 @@ impl Http {
             timeout: timeout,
             inner: ureq::Agent::new_with_config(
                 ureq::Agent::config_builder()
+                    .http_status_as_error(false)
                     .timeout_connect(Some(Duration::from_secs(timeout)))
                     .timeout_global(Some(Duration::from_secs(timeout)))
                     .build(),
@@ -188,12 +189,15 @@ impl Http {
             }
             Method::Delete(uri) => self.inner.delete(uri).call(),
         }?;
+        if v.status().as_u16() == 500 {
+            return Err(SError::Http(500, v.body_mut().read_to_string()?));
+        }
         Ok(())
     }
 
     fn req<T: serde::de::DeserializeOwned>(&self, method: Method) -> SResult<T> {
         method.log();
-        let v = match method {
+        let mut v = match method {
             Method::Get(uri) => self.inner.get(uri).call(),
             Method::Post(url, body) => {
                 self.inner
@@ -206,10 +210,14 @@ impl Http {
                     })
             }
             Method::Delete(uri) => self.inner.delete(uri).call(),
-        }?
-        .body_mut()
-        .read_to_string()
-        .map_err(|f| SError::from(f))?;
+        }?;
+        if v.status().as_u16() != 200 {
+            return Err(SError::Http(
+                v.status().as_u16().into(),
+                v.body_mut().read_to_string()?,
+            ));
+        }
+        let v = v.body_mut().read_to_string().map_err(|f| SError::from(f))?;
         log::debug!("Response: {v}");
         serde_json::from_str(v.as_str()).map_err(|e| SError::Http(-2, e.to_string()))
     }
@@ -847,11 +855,13 @@ impl From<serde_json::Error> for SError {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, net::TcpListener};
 
     use crate::{
         driver::Rect,
+        http::Http,
         option::{FirefoxOption, MultipleTypeMapValue},
+        SError,
     };
 
     use super::Capability;
@@ -903,5 +913,100 @@ mod tests {
             r#"{"capabilities":{"alwaysMatch":{},"firstMatch":[{}]}}"#,
             format!("{c}")
         );
+    }
+    #[test]
+    fn test_http_404() {
+        use std::{
+            io::{prelude::*, BufReader},
+            net::{TcpListener, TcpStream},
+        };
+
+        let port = TcpListener::bind("0.0.0.0:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+
+        let listener = TcpListener::bind(format!("127.0.0.1:{port}")).unwrap();
+
+        std::thread::spawn(move || {
+            for ele in listener.incoming() {
+                let mut stream = ele.unwrap();
+                let buf_reader = BufReader::new(&stream);
+                let http_request: Vec<_> = buf_reader
+                    .lines()
+                    .map(|result| result.unwrap())
+                    .take_while(|line| !line.is_empty())
+                    .collect();
+                println!("req={:?}", http_request);
+                stream
+                    .write_all("HTTP/1.1 404 OK\r\nContent-Length: 5\r\n\r\nerror".as_bytes())
+                    .unwrap();
+                break;
+            }
+        });
+        // #[should_panic(expected  = r#"called `Result::unwrap()` on an `Err` value: Http(500, "error")"#)] 始终通不过，换种校验
+        let http = Http::new(format!("http://127.0.0.1:{port}").as_str(), 8333);
+        // let s = http.get_current_url("s").unwrap();
+        match http.get_current_url("s") {
+            Ok(_) => {
+                panic!("should panic")
+            }
+            Err(SError::Http(code, msg)) => {
+                assert_eq!(404, code);
+                assert_eq!("error", msg)
+            }
+            Err(_) => {
+                panic!("should panic")
+            }
+        }
+    }
+
+    #[test]
+    fn test_http_500() {
+        use std::{
+            io::{prelude::*, BufReader},
+            net::{TcpListener, TcpStream},
+        };
+
+        let port = TcpListener::bind("0.0.0.0:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+
+        let listener = TcpListener::bind(format!("127.0.0.1:{port}")).unwrap();
+
+        std::thread::spawn(move || {
+            for ele in listener.incoming() {
+                let mut stream = ele.unwrap();
+                let buf_reader = BufReader::new(&stream);
+                let http_request: Vec<_> = buf_reader
+                    .lines()
+                    .map(|result| result.unwrap())
+                    .take_while(|line| !line.is_empty())
+                    .collect();
+                println!("req={:?}", http_request);
+                stream
+                    .write_all("HTTP/1.1 500 OK\r\nContent-Length: 5\r\n\r\nerror".as_bytes())
+                    .unwrap();
+                break;
+            }
+        });
+        // #[should_panic(expected  = r#"called `Result::unwrap()` on an `Err` value: Http(500, "error")"#)] 始终通不过，换种校验
+        let http = Http::new(format!("http://127.0.0.1:{port}").as_str(), 8333);
+        // let s = http.get_current_url("s").unwrap();
+        match http.get_current_url("s") {
+            Ok(_) => {
+                panic!("should panic")
+            }
+            Err(SError::Http(code, msg)) => {
+                assert_eq!(500, code);
+                assert_eq!("error", msg)
+            }
+            Err(_) => {
+                panic!("should panic")
+            }
+        }
     }
 }
