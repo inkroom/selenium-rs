@@ -250,3 +250,45 @@ fn test_maximize_window() {
     assert_ne!(rect.width, n_rect.width);
     assert_ne!(rect.height, n_rect.height);
 }
+
+#[test]
+fn wait_until_element() {
+    let driver = common::new_driver();
+
+    // 首先测试不出现
+    assert_eq!(
+        true,
+        driver
+            .wait_until_element(selenium::By::Id("wait_until_element"), 2000)
+            .is_err()
+    );
+
+    // 测试出现
+    assert_eq!(
+        true,
+        driver
+            .wait_until_element(selenium::By::Id("wait_until_element"), 5000)
+            .is_ok()
+    );
+}
+
+#[test]
+fn test_wait_until_element_displayed() {
+    let driver = common::new_driver();
+
+    // 首先测试不出现
+    assert_eq!(
+        true,
+        driver
+            .wait_until_element_displayed(selenium::By::Id("test_wait_until_element_displayed"), 2000)
+            .is_err()
+    );
+
+    // 测试出现
+    assert_eq!(
+        true,
+        driver
+            .wait_until_element_displayed(selenium::By::Id("test_wait_until_element_displayed"), 5000)
+            .is_ok()
+    );
+}

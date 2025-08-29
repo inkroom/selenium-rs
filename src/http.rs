@@ -398,10 +398,10 @@ impl Http {
         Ok(session.value)
     }
 
-    pub(crate) fn find_element(&self, session_id: &str, by: By<'_>) -> SResult<(String, String)> {
+    pub(crate) fn find_element(&self, session_id: &str, by: &By<'_>) -> SResult<(String, String)> {
         let res: ResponseWrapper<HashMap<String, String>> = self.req(Method::Post(
             format!("{}/session/{}/element", self.url, session_id),
-            serde_json::to_string(&by)?,
+            serde_json::to_string(by)?,
         ))?;
         for ele in res.value {
             return Ok(ele);
@@ -412,11 +412,11 @@ impl Http {
     pub(crate) fn find_elements(
         &self,
         session_id: &str,
-        by: By<'_>,
+        by: &By<'_>,
     ) -> SResult<Vec<(String, String)>> {
         let res: ResponseWrapper<Vec<HashMap<String, String>>> = self.req(Method::Post(
             format!("{}/session/{}/elements", self.url, session_id),
-            serde_json::to_string(&by)?,
+            serde_json::to_string(by)?,
         ))?;
 
         Ok(res

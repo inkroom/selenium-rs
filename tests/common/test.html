@@ -37,6 +37,7 @@
     <div id="confirm">confirm</div>
     <div id="prompt">prompt</div>
     <a id="href" href="../2329">测试</a>
+    <span id="test_wait_until_element_displayed" style="display: none;;">test_wait_until_element_displayed</span>
     <img id="src" src="1.png"/>
     <script>
         document.getElementById('height').style.height = document.body.offsetHeight + 'px';
@@ -70,6 +71,16 @@
 
             }
         }
+        setTimeout(()=>{
+            let s = document.createElement('span');
+            s.id = 'wait_until_element';
+            s.innerHTML="wait_until_element";
+            document.body.append(s);
+        },5000)
+
+        setTimeout(()=>{
+            document.getElementById('test_wait_until_element_displayed').style.display='block';
+        },5000)
     </script>
 </body>
 
