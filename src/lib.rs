@@ -13,6 +13,9 @@ pub enum SError {
     Http(i32, String),
     /// http请求成功，但是对应参数不正确，比如找不到元素
     Browser(String),
+    /// 超时
+    Timeout(String),
+    Io(std::io::Error),
 }
 impl Display for SError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -21,6 +24,8 @@ impl Display for SError {
             Self::Driver(m) => f.write_fmt(format_args!("driver:{m}")),
             Self::Http(status, m) => f.write_fmt(format_args!("http:status:{status}, reason:{m}")),
             Self::Browser(m) => f.write_fmt(format_args!("browser:{m}")),
+            Self::Timeout(m) => f.write_fmt(format_args!("timeout:{m}")),
+            Self::Io(m) => f.write_fmt(format_args!("io:{m}")),
         }
     }
 }
@@ -32,13 +37,15 @@ impl Debug for SError {
             Self::Message(arg0) => f.debug_tuple("Message").field(arg0).finish(),
             Self::Http(arg0, arg1) => f.debug_tuple("Http").field(arg0).field(arg1).finish(),
             Self::Browser(arg0) => f.debug_tuple("Browser").field(arg0).finish(),
+            Self::Timeout(arg0) => f.debug_tuple("Timeout").field(arg0).finish(),
+            Self::Io(arg0) => f.debug_tuple("Io").field(arg0).finish(),
         }
     }
 }
 
 impl From<std::io::Error> for SError {
     fn from(value: std::io::Error) -> Self {
-        Self::Message(value.to_string())
+        Self::Io(value)
     }
 }
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use selenium::driver::Rect;
+use selenium::{driver::Rect, By};
 
 use crate::common::sleep;
 mod common;
@@ -280,7 +280,10 @@ fn test_wait_until_element_displayed() {
     assert_eq!(
         true,
         driver
-            .wait_until_element_displayed(selenium::By::Id("test_wait_until_element_displayed"), 2000)
+            .wait_until_element_displayed(
+                selenium::By::Id("test_wait_until_element_displayed"),
+                2000
+            )
             .is_err()
     );
 
@@ -288,7 +291,31 @@ fn test_wait_until_element_displayed() {
     assert_eq!(
         true,
         driver
-            .wait_until_element_displayed(selenium::By::Id("test_wait_until_element_displayed"), 5000)
+            .wait_until_element_displayed(
+                selenium::By::Id("test_wait_until_element_displayed"),
+                5000
+            )
             .is_ok()
     );
+}
+
+#[test]
+fn test_wait_until_element_not_exist() {
+    let driver = common::new_driver();
+
+    // 首先保证元素存在
+    match driver.wait_until_element_not_exist(selenium::By::Id("alert"), 1000) {
+        Ok(_) => {
+            panic!("not exist fail")
+        }
+        Err(selenium::SError::Timeout(e)) => {}
+        Err(e) => {
+            panic!("fail {:?}", e);
+        }
+    }
+    driver
+        .wait_until_element_not_exist(selenium::By::Id("alert"), 5000)
+        .unwrap();
+
+    assert_eq!(true, driver.find_element(By::Id("alert")).is_err());
 }

@@ -438,8 +438,10 @@ impl Driver {
         })
     }
 
-    pub fn find_elements(&self, by: By<'_>) -> SResult<Vec<Element>> {
-        let v = self.http.find_elements(&self.session.session_id, &by)?;
+    pub fn find_elements<'a, T: AsRef<By<'a>>>(&self, by: T) -> SResult<Vec<Element>> {
+        let v = self
+            .http
+            .find_elements(&self.session.session_id, by.as_ref())?;
         Ok(v.iter()
             .map(|f| Element {
                 http: Rc::clone(&self.http),
@@ -543,14 +545,18 @@ impl Driver {
 
 // Wait
 impl Driver {
-    /// 等待直到元素出现
-    pub fn wait_until_element(&self, by: By<'_>, timeout: u128) -> SResult<Element> {
+    /// 等待元素不存在
+    ///
+    /// # Params
+    ///
+    /// timeout 毫秒
+    pub fn wait_until_element_not_exist(&self, by: By<'_>, timeout: u128) -> SResult<()> {
         let s = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|v| v.as_millis())
             .unwrap_or(0);
 
-            let mut count = 0;
+        let mut count = 0;
         loop {
             count += 1;
             let n = std::time::SystemTime::now()
@@ -558,7 +564,49 @@ impl Driver {
                 .map(|v| v.as_millis())
                 .unwrap_or(0);
             if n - s > timeout {
-                return Err(SError::Driver("wait timeout".to_string()));
+                return Err(SError::Timeout("wait timeout".to_string()));
+            }
+
+            match self.find_element(by.as_ref()) {
+                Ok(ele) => {
+                    continue;
+                }
+                Err(SError::Http(ref status, msg)) if *status == 404 => {
+                    return Ok(());
+                }
+                Err(e) => {
+                    let n = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|v| v.as_millis())
+                        .unwrap_or(0);
+                    if n - s > timeout {
+                        return Err(SError::Timeout(format!("{:?}", e)));
+                    }
+                }
+            }
+        }
+    }
+
+    /// 等待直到元素出现
+    ///
+    /// # Params
+    ///
+    /// timeout 毫秒
+    pub fn wait_until_element(&self, by: By<'_>, timeout: u128) -> SResult<Element> {
+        let s = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|v| v.as_millis())
+            .unwrap_or(0);
+
+        let mut count = 0;
+        loop {
+            count += 1;
+            let n = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|v| v.as_millis())
+                .unwrap_or(0);
+            if n - s > timeout {
+                return Err(SError::Timeout("wait timeout".to_string()));
             }
 
             match self.find_element(by.as_ref()) {
@@ -571,14 +619,22 @@ impl Driver {
                         .map(|v| v.as_millis())
                         .unwrap_or(0);
                     if n - s > timeout {
-                        return Err(e);
+                        return Err(SError::Timeout(format!("{:?}", e)));
                     }
                 }
             }
         }
     }
 
-    pub fn wait_until_element_displayed(&self, by: By<'_>, timeout: u128) -> SResult<Element> {
+    /// # Params
+    ///
+    /// timeout 毫秒
+    pub fn wait_until_element_on<T: Fn(&Element) -> SResult<bool>>(
+        &self,
+        by: By<'_>,
+        timeout: u128,
+        on: T,
+    ) -> SResult<Element> {
         let s = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|v| v.as_millis())
@@ -590,12 +646,12 @@ impl Driver {
                 .map(|v| v.as_millis())
                 .unwrap_or(0);
             if n - s > timeout {
-                return Err(SError::Driver("wait timeout".to_string()));
+                return Err(SError::Timeout("wait timeout".to_string()));
             }
 
             match self.find_element(by.as_ref()) {
                 Ok(ele) => {
-                    if ele.is_displayed().is_ok_and(|f| f) {
+                    if on(&ele).is_ok_and(|f| f) {
                         return Ok(ele);
                     }
                 }
@@ -605,7 +661,87 @@ impl Driver {
                         .map(|v| v.as_millis())
                         .unwrap_or(0);
                     if n - s > timeout {
-                        return Err(e);
+                        return Err(SError::Timeout(format!("{:?}", e)));
+                    }
+                }
+            }
+        }
+    }
+
+    /// # Params
+    ///
+    /// timeout 毫秒
+    pub fn wait_until_element_displayed(&self, by: By<'_>, timeout: u128) -> SResult<Element> {
+        self.wait_until_element_on(by, timeout, |ele| ele.is_displayed())
+    }
+
+    pub fn wait_until_elements(&self, by: By<'_>, timeout: u128) -> SResult<Vec<Element>> {
+        let s = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|v| v.as_millis())
+            .unwrap_or(0);
+
+        let mut count = 0;
+        loop {
+            count += 1;
+            let n = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|v| v.as_millis())
+                .unwrap_or(0);
+            if n - s > timeout {
+                return Err(SError::Timeout("wait timeout".to_string()));
+            }
+
+            match self.find_elements(by.as_ref()) {
+                Ok(ele) => {
+                    return Ok(ele);
+                }
+                Err(e) => {
+                    let n = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|v| v.as_millis())
+                        .unwrap_or(0);
+                    if n - s > timeout {
+                        return Err(SError::Timeout(format!("{:?}", e)));
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn wait_until_elements_on<T: Fn(&[Element]) -> SResult<bool>>(
+        &self,
+        by: By<'_>,
+        timeout: u128,
+        on: T,
+    ) -> SResult<Vec<Element>> {
+        let s = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|v| v.as_millis())
+            .unwrap_or(0);
+
+        loop {
+            let n = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|v| v.as_millis())
+                .unwrap_or(0);
+            if n - s > timeout {
+                return Err(SError::Timeout("wait timeout".to_string()));
+            }
+
+            match self.find_elements(by.as_ref()) {
+                Ok(ele) => {
+                    if on(&ele).is_ok_and(|f| f) {
+                        return Ok(ele);
+                    }
+                }
+                Err(e) => {
+                    let n = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|v| v.as_millis())
+                        .unwrap_or(0);
+                    if n - s > timeout {
+                        return Err(SError::Timeout(format!("{:?}", e)));
                     }
                 }
             }
